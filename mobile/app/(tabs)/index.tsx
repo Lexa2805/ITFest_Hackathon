@@ -6,12 +6,14 @@ import { useFridgeStore } from '@/stores/fridgeStore';
 import { useAuthStore } from '@/stores/authStore';
 import { getLatestShoppingList, suggestRecipes, RecipeResponse, ShoppingListResponse } from '@/services/nutritionApi';
 import { DailyBriefingCard } from '@/components/home/DailyBriefingCard';
+import { LifeScoreWidget } from '@/components/home/LifeScoreWidget';
 import { TrendSparkline } from '@/components/home/TrendSparkline';
 import { StreakBadge } from '@/components/home/StreakBadge';
 import { ExpiryAlertBanner } from '@/components/home/ExpiryAlertBanner';
 import { getTrendData, type TrendResponse } from '@/services/trendApi';
 import { getStreaks, type StreakResponse } from '@/services/streakApi';
 import { getExpiryAlerts, type ExpiryAlertItem } from '@/services/expiryApi';
+import { useLifeScoreStore } from '@/stores/lifeScoreStore';
 
 type HealthMetric = {
   label: string;
@@ -88,6 +90,7 @@ export default function HomeScreen() {
   const isHealthInitialized = useHealthStore((state) => state.isInitialized);
   const user = useAuthStore((state) => state.user);
   const { items: fridgeItems, fetchItems } = useFridgeStore();
+  const fetchLifeScore = useLifeScoreStore((state) => state.fetchLifeScore);
   
   const [recipes, setRecipes] = useState<RecipeResponse[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingListResponse | null>(null);
@@ -127,6 +130,7 @@ export default function HomeScreen() {
     getTrendData('calories', 7).then(setTrendCalories).catch(() => {});
     getStreaks().then(setStreaks).catch(() => {});
     getExpiryAlerts().then(setExpiryAlerts).catch(() => {});
+    fetchLifeScore();
   }, []);
 
   // Get greeting based on time of day
@@ -308,6 +312,8 @@ export default function HomeScreen() {
         </View>
 
         <DailyBriefingCard />
+
+        <LifeScoreWidget />
 
         {expiryAlerts.length > 0 && (
           <ExpiryAlertBanner items={expiryAlerts} />

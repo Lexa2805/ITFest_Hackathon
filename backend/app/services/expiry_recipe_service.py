@@ -158,7 +158,7 @@ async def get_expiry_alerts(user_id: str) -> list[ExpiryAlertItem]:
         supabase.table(FRIDGE_TABLE)
         .select("id, name, expiry_date")
         .eq("user_id", user_id)
-        .neq("expiry_date", "null")
+        .not_("expiry_date", "is", "null")
         .execute()
     )
     rows: list[dict] = result.data or []
