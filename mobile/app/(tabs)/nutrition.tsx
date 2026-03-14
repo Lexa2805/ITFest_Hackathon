@@ -23,6 +23,7 @@ import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-ca
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { CalorieRing } from '@/components/nutrition/CalorieRing';
 import { MacroBar } from '@/components/nutrition/MacroBar';
 import { PhotoMealCapture } from '@/components/nutrition/PhotoMealCapture';
 import { FlowEntryCard } from '@/components/recipe/FlowEntryCard';
@@ -334,8 +335,8 @@ export default function NutritionScreen() {
                 {/* ── Header ── */}
                 <Animated.View entering={FadeInDown.duration(400)}>
                     <View style={styles.headerBlock}>
+                        <Text style={styles.todayLabel}>Today</Text>
                         <Text style={styles.title}>Nutrition</Text>
-                        <Text style={styles.subtitle}>Plan clean meals from your profile and daily targets.</Text>
 
                         <View style={styles.tabRow}>
                             <Pressable style={[styles.tabPill, styles.tabPillActive]} onPress={() => setActiveTab('main')}>
@@ -350,21 +351,45 @@ export default function NutritionScreen() {
                     </View>
                 </Animated.View>
 
-                {/* ── Hero calorie card ── */}
+                {/* ── Calorie ring + macro summary ── */}
                 <Animated.View entering={FadeInDown.duration(500).delay(100)}>
-                    <View style={styles.heroStats}>
-                        <Text style={styles.heroNumber}>{dailySummary?.kcal.consumed ?? 0}</Text>
-                        <Text style={styles.heroSuffix}>/ {dailySummary?.kcal.target ?? 0} kcal</Text>
-                        <Text style={styles.heroStatus}>{dailySummary?.status ?? 'On track'}</Text>
+                    <View style={styles.heroCard}>
+                        <View style={styles.heroRow}>
+                            <CalorieRing
+                                consumed={dailySummary?.kcal.consumed ?? 0}
+                                target={dailySummary?.kcal.target ?? 0}
+                            />
+                            <View style={styles.heroRight}>
+                                <View style={styles.kcalRow}>
+                                    <Text style={styles.kcalConsumed}>{dailySummary?.kcal.consumed ?? 0}</Text>
+                                    <Text style={styles.kcalTarget}> / {dailySummary?.kcal.target ?? 0}</Text>
+                                </View>
+                                <Text style={styles.kcalLabel}>Calories consumed</Text>
+                                <View style={styles.macroSummaryRow}>
+                                    <View style={styles.macroSummaryItem}>
+                                        <Text style={styles.macroSummaryValue}>{dailySummary?.protein.consumed ?? 0}g</Text>
+                                        <Text style={styles.macroSummaryLabel}>Protein</Text>
+                                    </View>
+                                    <View style={styles.macroSummaryItem}>
+                                        <Text style={styles.macroSummaryValue}>{dailySummary?.carbs.consumed ?? 0}g</Text>
+                                        <Text style={styles.macroSummaryLabel}>Carbs</Text>
+                                    </View>
+                                    <View style={styles.macroSummaryItem}>
+                                        <Text style={styles.macroSummaryValue}>{dailySummary?.fat.consumed ?? 0}g</Text>
+                                        <Text style={styles.macroSummaryLabel}>Fats</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
                     </View>
                 </Animated.View>
 
-                {/* ── Macro bars ── */}
+                {/* ── Macro progress bars ── */}
                 <Animated.View entering={FadeInDown.duration(500).delay(150)}>
                     <View style={styles.macroWrap}>
                         <MacroBar label="Protein" consumed={dailySummary?.protein.consumed ?? 0} target={dailySummary?.protein.target ?? 0} />
-                        <MacroBar label="Fat" consumed={dailySummary?.fat.consumed ?? 0} target={dailySummary?.fat.target ?? 0} />
                         <MacroBar label="Carbs" consumed={dailySummary?.carbs.consumed ?? 0} target={dailySummary?.carbs.target ?? 0} />
+                        <MacroBar label="Fats" consumed={dailySummary?.fat.consumed ?? 0} target={dailySummary?.fat.target ?? 0} />
                     </View>
                 </Animated.View>
 
@@ -569,15 +594,16 @@ const styles = StyleSheet.create({
     headerBlock: {
         gap: 6,
     },
+    todayLabel: {
+        color: theme.colors.text.muted,
+        fontSize: 14,
+        fontWeight: '600',
+    },
     title: {
         color: theme.colors.text.primary,
         fontSize: 34,
         fontWeight: '800',
         letterSpacing: 0.3,
-    },
-    subtitle: {
-        color: theme.colors.text.muted,
-        fontSize: 13,
     },
     tabRow: {
         flexDirection: 'row',
@@ -606,29 +632,55 @@ const styles = StyleSheet.create({
         color: theme.colors.error,
         fontSize: 13,
     },
-    heroStats: {
+    heroCard: {
         backgroundColor: theme.colors.background.secondary,
         borderRadius: theme.radius.lg,
         padding: 20,
-        gap: 4,
     },
-    heroNumber: {
+    heroRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 20,
+    },
+    heroRight: {
+        flex: 1,
+        gap: 6,
+    },
+    kcalRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+    kcalConsumed: {
         color: theme.colors.text.primary,
-        fontSize: 58,
+        fontSize: 28,
         fontWeight: '900',
-        lineHeight: 62,
-        letterSpacing: -1,
     },
-    heroSuffix: {
+    kcalTarget: {
         color: theme.colors.text.secondary,
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
     },
-    heroStatus: {
-        color: theme.colors.green.accent,
+    kcalLabel: {
+        color: theme.colors.text.muted,
         fontSize: 13,
-        fontWeight: '700',
-        marginTop: 2,
+    },
+    macroSummaryRow: {
+        flexDirection: 'row',
+        gap: 16,
+        marginTop: 8,
+    },
+    macroSummaryItem: {
+        alignItems: 'flex-start',
+    },
+    macroSummaryValue: {
+        color: theme.colors.green.primary,
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    macroSummaryLabel: {
+        color: theme.colors.text.muted,
+        fontSize: 11,
+        fontWeight: '600',
     },
     macroWrap: {
         gap: 10,
