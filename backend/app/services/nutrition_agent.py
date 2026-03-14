@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 from fastapi import HTTPException, status
 from postgrest.exceptions import APIError
+from pydantic import ValidationError
 
 from app.schemas.nutrition_agent import MealPlanMeal, MealPlanResponse
 from app.services.supabase_client import get_supabase
@@ -221,19 +222,50 @@ async def _call_llm_for_plan(
 
 def _normalize_plan_json(plan: dict[str, Any]) -> dict[str, Any]:
     """Validate and normalize plan structure before returning/saving."""
+
+    def _to_int(value: Any, *, default: int = 0) -> int:
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, (int, float)):
+            return int(round(value))
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if not cleaned:
+                return default
+            try:
+                return int(round(float(cleaned)))
+            except ValueError:
+                return default
+        return default
+
     meals_by_section: dict[str, list[dict[str, Any]]] = {}
     for section in ["breakfast", "lunch", "dinner", "snacks"]:
         raw_section = plan.get(section) or []
         normalized_section: list[dict[str, Any]] = []
         for meal in raw_section:
-            meal_model = MealPlanMeal(**meal)
+            meal_input = {
+                **meal,
+                "kcal": _to_int(meal.get("kcal")),
+                "protein_g": _to_int(meal.get("protein_g")),
+                "fat_g": _to_int(meal.get("fat_g")),
+                "carbs_g": _to_int(meal.get("carbs_g")),
+            }
+            try:
+                meal_model = MealPlanMeal(**meal_input)
+            except ValidationError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Generated meal plan has invalid structure in section '{section}'.",
+                ) from exc
             normalized_section.append(meal_model.model_dump(mode="json"))
         meals_by_section[section] = normalized_section
 
-    total_kcal = int(plan.get("total_kcal") or 0)
-    total_protein_g = int(plan.get("total_protein_g") or 0)
-    total_fat_g = int(plan.get("total_fat_g") or 0)
-    total_carbs_g = int(plan.get("total_carbs_g") or 0)
+    total_kcal = _to_int(plan.get("total_kcal"))
+    total_protein_g = _to_int(plan.get("total_protein_g"))
+    total_fat_g = _to_int(plan.get("total_fat_g"))
+    total_carbs_g = _to_int(plan.get("total_carbs_g"))
 
     return {
         "breakfast": meals_by_section["breakfast"],
@@ -245,3 +277,27 @@ def _normalize_plan_json(plan: dict[str, Any]) -> dict[str, Any]:
         "total_fat_g": total_fat_g,
         "total_carbs_g": total_carbs_g,
     }
+
+from app.services.recipe_rag_service import RecipeRAGService
+
+async def suggest_tonight_recipe(user_id: str) -> list[dict[str, Any]]:
+    "Flow A: What can I cook tonight? Natively hooks into RecipeRAGService node."
+    supabase = await get_supabase()
+    profile_response = await supabase.table("profiles").select("*").eq("user_id", user_id).limit(1).execute()
+    user_profile = profile_response.data[0] if profile_response.data else {}
+    
+    fridge_items = await _load_fridge_ingredients(user_id)
+    rag_service = RecipeRAGService(supabase)
+    
+    return rag_service.get_recipes_from_fridge(fridge_items, user_profile, top_k=5)
+
+async def generate_weekly_meal_plan(user_id: str) -> dict[str, Any]:
+    "Flow B: Plan my week. Natively hooks into RecipeRAGService node."
+    supabase = await get_supabase()
+    profile_response = await supabase.table("profiles").select("*").eq("user_id", user_id).limit(1).execute()
+    user_profile = profile_response.data[0] if profile_response.data else {}
+    
+    fridge_items = await _load_fridge_ingredients(user_id)
+    rag_service = RecipeRAGService(supabase)
+    
+    return rag_service.get_weekly_meal_plan(user_profile, fridge_items)

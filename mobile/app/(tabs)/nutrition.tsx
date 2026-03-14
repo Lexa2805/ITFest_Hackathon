@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    ImageBackground,
     Modal,
     Platform,
     Pressable,
@@ -11,15 +12,12 @@ import {
     Text,
     TextInput,
     View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Swipeable } from "react-native-gesture-handler";
-import { BarcodeScanningResult, CameraView, useCameraPermissions } from "expo-camera";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
 
-import { MacroBar } from "@/components/nutrition/MacroBar";
-import { MealPlanCard } from "@/components/nutrition/MealPlanCard";
-import { TabButton } from "@/components/nutrition/TabButton";
-import { PhotoMealCapture } from "@/components/nutrition/PhotoMealCapture";
+import { MacroBar } from '@/components/nutrition/MacroBar';
+import { PhotoMealCapture } from '@/components/nutrition/PhotoMealCapture';
 import {
     BarcodeNutritionProduct,
     DailySummaryResponse,
@@ -32,29 +30,24 @@ import {
     getLatestMealPlan,
     lookupFoodByBarcode,
     logMeal,
-} from "@/services/nutritionApi";
-import {
-    NutritionFridgeIngredient,
-    addNutritionFridgeIngredient,
-    deleteNutritionFridgeIngredient,
-    getNutritionFridgeIngredients,
-} from "@/services/fridgeApi";
-import { useAuthStore } from "@/stores/authStore";
+} from '@/services/nutritionApi';
+import { useAuthStore } from '@/stores/authStore';
+import { FridgeScreenContent } from '@/app/(tabs)/two';
 
 const C = {
-    bg: "#0A0A0A",
-    card: "#141414",
-    softCard: "#121A15",
-    border: "#1E1E1E",
-    text: "#F5F5F5",
-    body: "#C8D1CC",
-    muted: "#93A19A",
-    accent: "#00E676",
-    danger: "#FF6B6B",
+    bg: '#0D0D14',
+    card: '#13121C',
+    border: 'rgba(247,244,239,0.12)',
+    text: '#F7F4EF',
+    body: '#C8C1B6',
+    muted: '#8F8779',
+    amber: '#F2A65A',
+    coral: '#E7836D',
+    danger: '#F08A7C',
 } as const;
 
-type NutritionTab = "plan" | "fridge" | "log";
-type MealMoment = "breakfast" | "lunch" | "dinner" | "snack";
+type NutritionTab = 'main' | 'fridge';
+type MealMoment = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 interface MealFormState {
     meal_name: string;
@@ -67,53 +60,61 @@ interface MealFormState {
 }
 
 const INITIAL_FORM: MealFormState = {
-    meal_name: "",
+    meal_name: '',
     ingredients: [],
-    kcal: "",
-    protein: "",
-    fat: "",
-    carbs: "",
-    time_of_day: "breakfast",
+    kcal: '',
+    protein: '',
+    fat: '',
+    carbs: '',
+    time_of_day: 'breakfast',
 };
+
+function RecipeHeroCard({ meal, index, onPick }: { meal: PlannedMeal; index: number; onPick: () => void }) {
+    const sources = [
+        'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1543353071-087092ec393a?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1547592180-85f173990554?w=1200&auto=format&fit=crop&q=80',
+    ];
+
+    return (
+        <Pressable onPress={onPick} style={styles.recipeCardWrap}>
+            <ImageBackground source={{ uri: sources[index % sources.length] }} style={styles.recipeCardImage} imageStyle={styles.recipeImageStyle}>
+                <View style={styles.recipeOverlay}>
+                    <Text style={styles.recipeTitle} numberOfLines={2}>{meal.meal_name}</Text>
+                    <Text style={styles.recipeMeta}>{meal.kcal} kcal · P {meal.protein_g} · F {meal.fat_g} · C {meal.carbs_g}</Text>
+                </View>
+            </ImageBackground>
+        </Pressable>
+    );
+}
 
 export default function NutritionScreen() {
     const user = useAuthStore((state) => state.user);
-    const userId = user?.id ?? "";
+    const userId = user?.id ?? '';
 
-    const [activeTab, setActiveTab] = useState<NutritionTab>("plan");
+    const [activeTab, setActiveTab] = useState<NutritionTab>('main');
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const [mealPlan, setMealPlan] = useState<MealPlanResponse | null>(null);
     const [dailySummary, setDailySummary] = useState<DailySummaryResponse | null>(null);
-    const [fridgeItems, setFridgeItems] = useState<NutritionFridgeIngredient[]>([]);
-
-    const [showAddIngredientSheet, setShowAddIngredientSheet] = useState(false);
-    const [newIngredientName, setNewIngredientName] = useState("");
-    const [newIngredientQuantity, setNewIngredientQuantity] = useState("100");
-    const [newIngredientUnit, setNewIngredientUnit] = useState("g");
-
     const [showLogMealSheet, setShowLogMealSheet] = useState(false);
     const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
-    const [barcodeValue, setBarcodeValue] = useState("");
+    const [barcodeValue, setBarcodeValue] = useState('');
     const [barcodeLookupLoading, setBarcodeLookupLoading] = useState(false);
     const [scannerLocked, setScannerLocked] = useState(false);
     const [mealForm, setMealForm] = useState<MealFormState>(INITIAL_FORM);
-    const [ingredientDraftName, setIngredientDraftName] = useState("");
-    const [ingredientDraftGrams, setIngredientDraftGrams] = useState("0");
+    const [ingredientDraftName, setIngredientDraftName] = useState('');
+    const [ingredientDraftGrams, setIngredientDraftGrams] = useState('0');
     const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
-    const todayIso = useMemo(() => new Date().toISOString().split("T")[0], []);
+    const todayIso = useMemo(() => new Date().toISOString().split('T')[0], []);
 
     const plannedMealsFlat = useMemo(() => {
         if (!mealPlan) return [] as PlannedMeal[];
-        return [
-            ...mealPlan.breakfast,
-            ...mealPlan.lunch,
-            ...mealPlan.dinner,
-            ...mealPlan.snacks,
-        ];
+        return [...mealPlan.breakfast, ...mealPlan.lunch, ...mealPlan.dinner, ...mealPlan.snacks];
     }, [mealPlan]);
 
     const loadAll = React.useCallback(async () => {
@@ -125,25 +126,20 @@ export default function NutritionScreen() {
         setError(null);
         setLoading(true);
         try {
-            const [summaryResult, fridgeResult, planResult] = await Promise.allSettled([
+            const [summaryResult, planResult] = await Promise.allSettled([
                 getDailySummary(userId, todayIso),
-                getNutritionFridgeIngredients(userId),
                 getLatestMealPlan(),
             ]);
 
-            if (summaryResult.status === "fulfilled") {
+            if (summaryResult.status === 'fulfilled') {
                 setDailySummary(summaryResult.value);
             }
 
-            if (fridgeResult.status === "fulfilled") {
-                setFridgeItems(fridgeResult.value);
-            }
-
-            if (planResult.status === "fulfilled") {
+            if (planResult.status === 'fulfilled') {
                 setMealPlan(planResult.value);
             }
         } catch (unknownError) {
-            setError("Failed to load nutrition data.");
+            setError('Failed to load nutrition data.');
             console.error(unknownError);
         } finally {
             setLoading(false);
@@ -179,43 +175,7 @@ export default function NutritionScreen() {
             });
             setMealPlan(generated);
         } catch (unknownError) {
-            setError("Failed to generate meal plan.");
-            console.error(unknownError);
-        }
-    };
-
-    const handleAddIngredient = async () => {
-        if (!userId || !newIngredientName.trim()) return;
-
-        try {
-            const quantity = Number(newIngredientQuantity);
-            if (!Number.isFinite(quantity) || quantity <= 0) {
-                return;
-            }
-
-            await addNutritionFridgeIngredient({
-                name: newIngredientName.trim(),
-                quantity,
-                unit: newIngredientUnit,
-            });
-            setNewIngredientName("");
-            setNewIngredientQuantity("100");
-            setNewIngredientUnit("g");
-            setShowAddIngredientSheet(false);
-            setFridgeItems(await getNutritionFridgeIngredients(userId));
-        } catch (unknownError) {
-            setError("Failed to add ingredient.");
-            console.error(unknownError);
-        }
-    };
-
-    const handleDeleteIngredient = async (ingredientId: string) => {
-        if (!userId) return;
-        try {
-            await deleteNutritionFridgeIngredient(userId, ingredientId);
-            setFridgeItems(await getNutritionFridgeIngredients(userId));
-        } catch (unknownError) {
-            setError("Failed to delete ingredient.");
+            setError('Failed to generate meal plan.');
             console.error(unknownError);
         }
     };
@@ -226,16 +186,10 @@ export default function NutritionScreen() {
 
         setMealForm((current) => ({
             ...current,
-            ingredients: [
-                ...current.ingredients,
-                {
-                    name: ingredientDraftName.trim(),
-                    grams,
-                },
-            ],
+            ingredients: [...current.ingredients, { name: ingredientDraftName.trim(), grams }],
         }));
-        setIngredientDraftName("");
-        setIngredientDraftGrams("0");
+        setIngredientDraftName('');
+        setIngredientDraftGrams('0');
     };
 
     const handlePickFromPlan = (meal: PlannedMeal) => {
@@ -246,8 +200,9 @@ export default function NutritionScreen() {
             protein: String(meal.protein_g),
             fat: String(meal.fat_g),
             carbs: String(meal.carbs_g),
-            time_of_day: "dinner",
+            time_of_day: 'dinner',
         });
+        setShowLogMealSheet(true);
     };
 
     const handleLogMeal = async () => {
@@ -270,7 +225,7 @@ export default function NutritionScreen() {
             setShowLogMealSheet(false);
             setDailySummary(await getDailySummary(userId, todayIso));
         } catch (unknownError) {
-            setError("Failed to log meal.");
+            setError('Failed to log meal.');
             console.error(unknownError);
         }
     };
@@ -280,13 +235,7 @@ export default function NutritionScreen() {
         setMealForm((current) => ({
             ...current,
             meal_name: product.productName,
-            ingredients: [
-                ...current.ingredients,
-                {
-                    name: product.productName,
-                    grams,
-                },
-            ],
+            ingredients: [...current.ingredients, { name: product.productName, grams }],
             kcal: String(Math.round(product.kcalPer100g * ratio)),
             protein: String(Math.round(product.proteinPer100g * ratio)),
             fat: String(Math.round(product.fatPer100g * ratio)),
@@ -297,7 +246,7 @@ export default function NutritionScreen() {
     const handleLookupBarcode = async (inputBarcode?: string) => {
         const targetBarcode = (inputBarcode ?? barcodeValue).trim();
         if (!targetBarcode) {
-            setError("Enter or scan a barcode first.");
+            setError('Enter or scan a barcode first.');
             return;
         }
 
@@ -309,9 +258,7 @@ export default function NutritionScreen() {
             setBarcodeValue(targetBarcode);
             setShowBarcodeScanner(false);
         } catch (lookupError: any) {
-            const message = typeof lookupError?.message === "string"
-                ? lookupError.message
-                : "Failed to resolve product by barcode.";
+            const message = typeof lookupError?.message === 'string' ? lookupError.message : 'Failed to resolve product by barcode.';
             setError(message);
         } finally {
             setBarcodeLookupLoading(false);
@@ -320,15 +267,15 @@ export default function NutritionScreen() {
     };
 
     const openScanner = async () => {
-        if (Platform.OS === "web") {
-            setError("Camera scanning is not available on web. Enter barcode manually.");
+        if (Platform.OS === 'web') {
+            setError('Camera scanning is not available on web. Enter barcode manually.');
             return;
         }
 
         if (!cameraPermission?.granted) {
             const permission = await requestCameraPermission();
             if (!permission.granted) {
-                Alert.alert("Permission required", "Camera permission is required to scan barcodes.");
+                Alert.alert('Permission required', 'Camera permission is required to scan barcodes.');
                 return;
             }
         }
@@ -347,208 +294,115 @@ export default function NutritionScreen() {
     if (loading) {
         return (
             <SafeAreaView style={[styles.safeArea, styles.loadingState]}>
-                <ActivityIndicator color={C.accent} size="large" />
+                <ActivityIndicator color={C.amber} size="large" />
             </SafeAreaView>
         );
     }
 
-    const consumedKcal = dailySummary?.kcal.consumed ?? 0;
-    const targetKcal = dailySummary?.kcal.target ?? 0;
-    const progressRatio = targetKcal > 0 ? Math.min(consumedKcal / targetKcal, 1) : 0;
+    if (activeTab === 'fridge') {
+        return (
+            <SafeAreaView style={styles.safeArea}>
+                <View style={styles.screen}>
+                    <View style={styles.headerBlock}>
+                        <Text style={styles.title}>Nutrition</Text>
+                        <View style={styles.tabRow}>
+                            <Pressable style={styles.tabPill} onPress={() => setActiveTab('main')}>
+                                <Text style={styles.tabPillText}>Recipes</Text>
+                            </Pressable>
+                            <Pressable style={[styles.tabPill, styles.tabPillActive]} onPress={() => setActiveTab('fridge')}>
+                                <Text style={[styles.tabPillText, styles.tabPillTextActive]}>Fridge</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                    <FridgeScreenContent embedded />
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView
                 style={styles.screen}
                 contentContainerStyle={styles.content}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.accent} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.amber} />}
             >
-                <Text style={styles.title}>Nutrition</Text>
-                <Text style={styles.subtitle}>Meal planning, fridge inventory, and daily food tracking</Text>
+                <View style={styles.headerBlock}>
+                    <Text style={styles.title}>Nutrition</Text>
+                    <Text style={styles.subtitle}>Plan clean meals from your profile and daily targets.</Text>
 
-                <View style={styles.tabRow}>
-                    <TabButton label="My Plan" active={activeTab === "plan"} onPress={() => setActiveTab("plan")} />
-                    <TabButton label="My Fridge" active={activeTab === "fridge"} onPress={() => setActiveTab("fridge")} />
-                    <TabButton label="Food Log" active={activeTab === "log"} onPress={() => setActiveTab("log")} />
-                </View>
-
-                {error ? <Text style={styles.error}>{error}</Text> : null}
-
-                {activeTab === "plan" ? (
-                    <>
-                        <View style={styles.card}>
-                            <Text style={styles.cardTitle}>Daily Energy Progress</Text>
-                            <View style={styles.progressWrap}>
-                                <View style={styles.ringOuter}>
-                                    <View style={styles.ringInner}>
-                                        <Text style={styles.progressValue}>{Math.round(progressRatio * 100)}%</Text>
-                                        <Text style={styles.progressLabel}>kcal</Text>
-                                    </View>
-                                </View>
-                                <Text style={styles.summaryText}>
-                                    {consumedKcal} / {targetKcal} kcal consumed
-                                </Text>
-                            </View>
-                            <View style={styles.macroWrap}>
-                                <MacroBar
-                                    label="Protein"
-                                    consumed={dailySummary?.protein.consumed ?? 0}
-                                    target={dailySummary?.protein.target ?? 0}
-                                />
-                                <MacroBar
-                                    label="Fat"
-                                    consumed={dailySummary?.fat.consumed ?? 0}
-                                    target={dailySummary?.fat.target ?? 0}
-                                />
-                                <MacroBar
-                                    label="Carbs"
-                                    consumed={dailySummary?.carbs.consumed ?? 0}
-                                    target={dailySummary?.carbs.target ?? 0}
-                                />
-                            </View>
-                        </View>
-
-                        <Pressable style={styles.primaryButton} onPress={handleGeneratePlan}>
-                            <Text style={styles.primaryButtonText}>Generate new plan</Text>
+                    <View style={styles.tabRow}>
+                        <Pressable style={[styles.tabPill, styles.tabPillActive]} onPress={() => setActiveTab('main')}>
+                            <Text style={[styles.tabPillText, styles.tabPillTextActive]}>Recipes</Text>
                         </Pressable>
-
-                        <MealPlanCard mealType="breakfast" meals={mealPlan?.breakfast ?? []} />
-                        <MealPlanCard mealType="lunch" meals={mealPlan?.lunch ?? []} />
-                        <MealPlanCard mealType="dinner" meals={mealPlan?.dinner ?? []} />
-                        <MealPlanCard mealType="snacks" meals={mealPlan?.snacks ?? []} />
-                    </>
-                ) : null}
-
-                {activeTab === "fridge" ? (
-                    <>
-                        <Pressable style={styles.primaryButton} onPress={() => setShowAddIngredientSheet(true)}>
-                            <Text style={styles.primaryButtonText}>Add ingredient</Text>
-                        </Pressable>
-
-                        <Pressable style={styles.secondaryButton} onPress={handleGeneratePlan}>
-                            <Text style={styles.secondaryButtonText}>Generate meal plan from fridge</Text>
-                        </Pressable>
-
-                        {fridgeItems.map((ingredient) => (
-                            <Swipeable
-                                key={ingredient.id}
-                                renderRightActions={() => (
-                                    <Pressable
-                                        style={styles.deleteAction}
-                                        onPress={() => {
-                                            void handleDeleteIngredient(ingredient.id);
-                                        }}
-                                    >
-                                        <Text style={styles.deleteActionText}>Delete</Text>
-                                    </Pressable>
-                                )}
-                            >
-                                <View style={styles.ingredientRow}>
-                                    <Text style={styles.ingredientName}>{ingredient.ingredient_name}</Text>
-                                    <Text style={styles.ingredientMeta}>
-                                        {ingredient.quantity} {ingredient.unit}
-                                    </Text>
-                                </View>
-                            </Swipeable>
-                        ))}
-
-                        {fridgeItems.length === 0 ? <Text style={styles.emptyText}>No ingredients in your fridge yet.</Text> : null}
-                    </>
-                ) : null}
-
-                {activeTab === "log" ? (
-                    <>
-                        <View style={styles.card}>
-                            <Text style={styles.cardTitle}>Daily Summary</Text>
-                            <Text style={styles.summaryText}>
-                                {dailySummary?.kcal.consumed ?? 0} / {dailySummary?.kcal.target ?? 0} kcal · {dailySummary?.status ?? "On track"}
-                            </Text>
-                            <View style={styles.macroGrid}>
-                                <View style={styles.macroRing}>
-                                    <Text style={styles.macroRingValue}>{dailySummary?.protein.consumed ?? 0}</Text>
-                                    <Text style={styles.macroRingLabel}>Protein</Text>
-                                </View>
-                                <View style={styles.macroRing}>
-                                    <Text style={styles.macroRingValue}>{dailySummary?.fat.consumed ?? 0}</Text>
-                                    <Text style={styles.macroRingLabel}>Fat</Text>
-                                </View>
-                                <View style={styles.macroRing}>
-                                    <Text style={styles.macroRingValue}>{dailySummary?.carbs.consumed ?? 0}</Text>
-                                    <Text style={styles.macroRingLabel}>Carbs</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <PhotoMealCapture onComplete={() => {
-                            if (userId) {
-                                getDailySummary(userId, todayIso).then(setDailySummary).catch(() => {});
-                            }
-                        }} />
-
-                        <Pressable style={styles.primaryButton} onPress={() => setShowLogMealSheet(true)}>
-                            <Text style={styles.primaryButtonText}>Log a meal</Text>
-                        </Pressable>
-
-                        {(["breakfast", "lunch", "dinner", "snack"] as const).map((timeOfDay) => {
-                            const meals = (dailySummary?.meals ?? []).filter((meal) => meal.time_of_day === timeOfDay);
-                            return (
-                                <View style={styles.card} key={timeOfDay}>
-                                    <Text style={styles.cardTitle}>{timeOfDay}</Text>
-                                    {meals.length === 0 ? (
-                                        <Text style={styles.emptyText}>No meal logged.</Text>
-                                    ) : (
-                                        meals.map((meal) => (
-                                            <View key={meal.id} style={styles.loggedMealRow}>
-                                                <Text style={styles.loggedMealName}>{meal.meal_name}</Text>
-                                                <Text style={styles.loggedMealMeta}>
-                                                    {meal.kcal} kcal · P {meal.protein} · F {meal.fat} · C {meal.carbs}
-                                                </Text>
-                                            </View>
-                                        ))
-                                    )}
-                                </View>
-                            );
-                        })}
-                    </>
-                ) : null}
-            </ScrollView>
-
-            <Modal visible={showAddIngredientSheet} transparent animationType="slide" onRequestClose={() => setShowAddIngredientSheet(false)}>
-                <View style={styles.sheetBackdrop}>
-                    <View style={styles.sheetCard}>
-                        <Text style={styles.sheetTitle}>Add Ingredient</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Ingredient name"
-                            placeholderTextColor={C.muted}
-                            value={newIngredientName}
-                            onChangeText={setNewIngredientName}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Quantity"
-                            placeholderTextColor={C.muted}
-                            keyboardType="numeric"
-                            value={newIngredientQuantity}
-                            onChangeText={setNewIngredientQuantity}
-                        />
-                        <View style={styles.unitRow}>
-                            {(["g", "ml", "pieces"] as const).map((unit) => (
-                                <Pressable
-                                    key={unit}
-                                    style={[styles.unitChip, newIngredientUnit === unit && styles.unitChipActive]}
-                                    onPress={() => setNewIngredientUnit(unit)}
-                                >
-                                    <Text style={[styles.unitChipText, newIngredientUnit === unit && styles.unitChipTextActive]}>{unit}</Text>
-                                </Pressable>
-                            ))}
-                        </View>
-                        <Pressable style={styles.primaryButton} onPress={handleAddIngredient}>
-                            <Text style={styles.primaryButtonText}>Save ingredient</Text>
+                        <Pressable style={styles.tabPill} onPress={() => setActiveTab('fridge')}>
+                            <Text style={styles.tabPillText}>Fridge</Text>
                         </Pressable>
                     </View>
+
+                    {error ? <Text style={styles.error}>{error}</Text> : null}
                 </View>
-            </Modal>
+
+                <View style={styles.heroStats}>
+                    <Text style={styles.heroNumber}>{dailySummary?.kcal.consumed ?? 0}</Text>
+                    <Text style={styles.heroSuffix}>/ {dailySummary?.kcal.target ?? 0} kcal</Text>
+                    <Text style={styles.heroStatus}>{dailySummary?.status ?? 'On track'}</Text>
+                </View>
+
+                <View style={styles.macroWrap}>
+                    <MacroBar label="Protein" consumed={dailySummary?.protein.consumed ?? 0} target={dailySummary?.protein.target ?? 0} />
+                    <MacroBar label="Fat" consumed={dailySummary?.fat.consumed ?? 0} target={dailySummary?.fat.target ?? 0} />
+                    <MacroBar label="Carbs" consumed={dailySummary?.carbs.consumed ?? 0} target={dailySummary?.carbs.target ?? 0} />
+                </View>
+
+                <View style={styles.rowActions}>
+                    <Pressable style={styles.primaryButton} onPress={handleGeneratePlan}>
+                        <Text style={styles.primaryButtonText}>Generate new plan</Text>
+                    </Pressable>
+                    <Pressable style={styles.secondaryButton} onPress={() => setShowLogMealSheet(true)}>
+                        <Text style={styles.secondaryButtonText}>Log a meal</Text>
+                    </Pressable>
+                </View>
+
+                <Text style={styles.sectionTitle}>Recipe suggestions</Text>
+                <View style={styles.recipeList}>
+                    {(plannedMealsFlat.length > 0 ? plannedMealsFlat : []).slice(0, 6).map((meal, index) => (
+                        <RecipeHeroCard key={`${meal.meal_name}-${index}`} meal={meal} index={index} onPick={() => handlePickFromPlan(meal)} />
+                    ))}
+                    {plannedMealsFlat.length === 0 ? (
+                        <View style={styles.emptyCard}>
+                            <Text style={styles.emptyText}>Generate a meal plan to see recipe cards.</Text>
+                        </View>
+                    ) : null}
+                </View>
+
+                <PhotoMealCapture
+                    onComplete={() => {
+                        if (userId) {
+                            getDailySummary(userId, todayIso).then(setDailySummary).catch(() => { });
+                        }
+                    }}
+                />
+
+                {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((timeOfDay) => {
+                    const meals = (dailySummary?.meals ?? []).filter((meal) => meal.time_of_day === timeOfDay);
+                    return (
+                        <View style={styles.loggedSection} key={timeOfDay}>
+                            <Text style={styles.loggedTitle}>{timeOfDay}</Text>
+                            {meals.length === 0 ? (
+                                <Text style={styles.emptyText}>No meal logged.</Text>
+                            ) : (
+                                meals.map((meal) => (
+                                    <View key={meal.id} style={styles.loggedMealRow}>
+                                        <Text style={styles.loggedMealName}>{meal.meal_name}</Text>
+                                        <Text style={styles.loggedMealMeta}>{meal.kcal} kcal · P {meal.protein} · F {meal.fat} · C {meal.carbs}</Text>
+                                    </View>
+                                ))
+                            )}
+                        </View>
+                    );
+                })}
+            </ScrollView>
 
             <Modal visible={showLogMealSheet} transparent animationType="slide" onRequestClose={() => setShowLogMealSheet(false)}>
                 <View style={styles.sheetBackdrop}>
@@ -579,14 +433,14 @@ export default function NutritionScreen() {
                                 }}
                                 disabled={barcodeLookupLoading}
                             >
-                                <Text style={styles.secondaryButtonText}>{barcodeLookupLoading ? "Looking up..." : "Use barcode"}</Text>
+                                <Text style={styles.secondaryButtonText}>{barcodeLookupLoading ? 'Looking up...' : 'Use barcode'}</Text>
                             </Pressable>
                         </View>
                         <Pressable style={styles.secondaryButton} onPress={() => void openScanner()}>
                             <Text style={styles.secondaryButtonText}>Scan barcode with camera</Text>
                         </Pressable>
 
-                        <Text style={styles.fieldLabel}>Pick from today's plan</Text>
+                        <Text style={styles.fieldLabel}>Pick from today’s plan</Text>
                         <View style={styles.planPickWrap}>
                             {plannedMealsFlat.map((meal, index) => (
                                 <Pressable key={`${meal.meal_name}-${index}`} style={styles.planPickChip} onPress={() => handlePickFromPlan(meal)}>
@@ -660,15 +514,13 @@ export default function NutritionScreen() {
 
                         <Text style={styles.fieldLabel}>Time of day</Text>
                         <View style={styles.unitRow}>
-                            {(["breakfast", "lunch", "dinner", "snack"] as const).map((time) => (
+                            {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((time) => (
                                 <Pressable
                                     key={time}
                                     style={[styles.unitChip, mealForm.time_of_day === time && styles.unitChipActive]}
                                     onPress={() => setMealForm((current) => ({ ...current, time_of_day: time }))}
                                 >
-                                    <Text style={[styles.unitChipText, mealForm.time_of_day === time && styles.unitChipTextActive]}>
-                                        {time}
-                                    </Text>
+                                    <Text style={[styles.unitChipText, mealForm.time_of_day === time && styles.unitChipTextActive]}>{time}</Text>
                                 </Pressable>
                             ))}
                         </View>
@@ -690,7 +542,7 @@ export default function NutritionScreen() {
                                 style={styles.scannerCamera}
                                 facing="back"
                                 onBarcodeScanned={onBarcodeScanned}
-                                barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"] }}
+                                barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }}
                             />
                         </View>
                         <Pressable style={styles.secondaryButton} onPress={() => setShowBarcodeScanner(false)}>
@@ -709,8 +561,8 @@ const styles = StyleSheet.create({
         backgroundColor: C.bg,
     },
     loadingState: {
-        justifyContent: "center",
-        alignItems: "center",
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     screen: {
         flex: 1,
@@ -720,157 +572,176 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         gap: 12,
     },
+    headerBlock: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        gap: 10,
+    },
     title: {
         color: C.text,
-        fontSize: 30,
-        fontWeight: "800",
+        fontSize: 32,
+        fontWeight: '800',
     },
     subtitle: {
         color: C.body,
         fontSize: 13,
     },
     tabRow: {
-        flexDirection: "row",
+        flexDirection: 'row',
         gap: 8,
+    },
+    tabPill: {
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: C.border,
+        backgroundColor: C.card,
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+    },
+    tabPillActive: {
+        borderColor: 'rgba(242,166,90,0.5)',
+        backgroundColor: 'rgba(242,166,90,0.16)',
+    },
+    tabPillText: {
+        color: C.muted,
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    tabPillTextActive: {
+        color: C.amber,
+        fontWeight: '700',
     },
     error: {
         color: C.danger,
         fontSize: 13,
     },
-    card: {
+    heroStats: {
+        backgroundColor: C.card,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: C.border,
+        padding: 16,
+        gap: 4,
+    },
+    heroNumber: {
+        color: C.text,
+        fontSize: 58,
+        fontWeight: '900',
+        lineHeight: 62,
+        letterSpacing: -1,
+    },
+    heroSuffix: {
+        color: C.body,
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    heroStatus: {
+        color: C.coral,
+        fontSize: 13,
+        fontWeight: '700',
+        marginTop: 2,
+    },
+    macroWrap: {
+        gap: 10,
+        backgroundColor: C.card,
+        borderWidth: 1,
+        borderColor: C.border,
+        borderRadius: 14,
+        padding: 12,
+    },
+    rowActions: {
+        flexDirection: 'row',
+        gap: 10,
+    },
+    primaryButton: {
+        backgroundColor: C.amber,
+        borderRadius: 12,
+        paddingVertical: 12,
+        alignItems: 'center',
+        flex: 1,
+    },
+    primaryButtonText: {
+        color: '#2E1B06',
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    secondaryButton: {
+        backgroundColor: C.card,
+        borderWidth: 1,
+        borderColor: C.border,
+        borderRadius: 12,
+        paddingVertical: 11,
+        paddingHorizontal: 12,
+        alignItems: 'center',
+    },
+    secondaryButtonText: {
+        color: C.body,
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    sectionTitle: {
+        color: C.text,
+        fontSize: 18,
+        fontWeight: '700',
+        marginTop: 4,
+    },
+    recipeList: {
+        gap: 10,
+    },
+    recipeCardWrap: {
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: C.border,
+        backgroundColor: C.card,
+    },
+    recipeCardImage: {
+        minHeight: 148,
+        justifyContent: 'flex-end',
+    },
+    recipeImageStyle: {
+        opacity: 0.9,
+    },
+    recipeOverlay: {
+        backgroundColor: 'rgba(8,8,12,0.55)',
+        padding: 12,
+        gap: 4,
+    },
+    recipeTitle: {
+        color: C.text,
+        fontSize: 18,
+        fontWeight: '800',
+        lineHeight: 22,
+    },
+    recipeMeta: {
+        color: C.body,
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    emptyCard: {
         backgroundColor: C.card,
         borderWidth: 1,
         borderColor: C.border,
         borderRadius: 14,
         padding: 14,
-        gap: 10,
-    },
-    cardTitle: {
-        color: C.text,
-        fontSize: 15,
-        fontWeight: "700",
-        textTransform: "capitalize",
-    },
-    progressWrap: {
-        alignItems: "center",
-        gap: 8,
-    },
-    ringOuter: {
-        width: 120,
-        height: 120,
-        borderRadius: 999,
-        backgroundColor: C.softCard,
-        borderWidth: 8,
-        borderColor: C.accent,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    ringInner: {
-        width: 88,
-        height: 88,
-        borderRadius: 999,
-        backgroundColor: C.card,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    progressValue: {
-        color: C.text,
-        fontSize: 22,
-        fontWeight: "700",
-    },
-    progressLabel: {
-        color: C.muted,
-        fontSize: 12,
-    },
-    summaryText: {
-        color: C.body,
-        fontSize: 13,
-    },
-    macroWrap: {
-        gap: 10,
-    },
-    primaryButton: {
-        backgroundColor: C.accent,
-        borderRadius: 12,
-        paddingVertical: 12,
-        alignItems: "center",
-    },
-    primaryButtonText: {
-        color: "#0A0A0A",
-        fontSize: 14,
-        fontWeight: "700",
-    },
-    secondaryButton: {
-        backgroundColor: C.softCard,
-        borderWidth: 1,
-        borderColor: C.border,
-        borderRadius: 12,
-        paddingVertical: 11,
-        alignItems: "center",
-    },
-    secondaryButtonText: {
-        color: C.accent,
-        fontSize: 13,
-        fontWeight: "600",
-    },
-    ingredientRow: {
-        backgroundColor: C.card,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: C.border,
-        padding: 12,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 8,
-    },
-    ingredientName: {
-        color: C.text,
-        fontSize: 14,
-        fontWeight: "600",
-    },
-    ingredientMeta: {
-        color: C.muted,
-        fontSize: 12,
-    },
-    deleteAction: {
-        backgroundColor: C.danger,
-        borderRadius: 12,
-        justifyContent: "center",
-        alignItems: "center",
-        width: 90,
-        marginBottom: 8,
-    },
-    deleteActionText: {
-        color: C.text,
-        fontWeight: "700",
     },
     emptyText: {
         color: C.muted,
         fontSize: 13,
     },
-    macroGrid: {
-        flexDirection: "row",
-        gap: 10,
+    loggedSection: {
+        backgroundColor: C.card,
+        borderWidth: 1,
+        borderColor: C.border,
+        borderRadius: 14,
+        padding: 12,
+        gap: 8,
     },
-    macroRing: {
-        flex: 1,
-        borderRadius: 999,
-        borderWidth: 2,
-        borderColor: C.accent,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: 16,
-        backgroundColor: C.softCard,
-    },
-    macroRingValue: {
-        color: C.text,
-        fontSize: 16,
-        fontWeight: "700",
-    },
-    macroRingLabel: {
-        color: C.muted,
-        fontSize: 11,
+    loggedTitle: {
+        color: C.amber,
+        fontSize: 14,
+        fontWeight: '700',
+        textTransform: 'capitalize',
     },
     loggedMealRow: {
         gap: 2,
@@ -881,7 +752,7 @@ const styles = StyleSheet.create({
     loggedMealName: {
         color: C.text,
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: '700',
     },
     loggedMealMeta: {
         color: C.body,
@@ -889,15 +760,15 @@ const styles = StyleSheet.create({
     },
     sheetBackdrop: {
         flex: 1,
-        justifyContent: "flex-end",
-        backgroundColor: "rgba(0,0,0,0.45)",
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0,0,0,0.55)',
     },
     sheetCard: {
         backgroundColor: C.card,
         borderTopLeftRadius: 18,
         borderTopRightRadius: 18,
         padding: 16,
-        maxHeight: "85%",
+        maxHeight: '85%',
     },
     sheetContent: {
         gap: 10,
@@ -906,11 +777,11 @@ const styles = StyleSheet.create({
     sheetTitle: {
         color: C.text,
         fontSize: 18,
-        fontWeight: "700",
-        marginBottom: 8,
+        fontWeight: '700',
+        marginBottom: 6,
     },
     input: {
-        backgroundColor: "#121212",
+        backgroundColor: '#10101A',
         borderWidth: 1,
         borderColor: C.border,
         borderRadius: 10,
@@ -919,40 +790,19 @@ const styles = StyleSheet.create({
         color: C.text,
         fontSize: 14,
     },
-    unitRow: {
-        flexDirection: "row",
-        gap: 8,
-        flexWrap: "wrap",
-    },
-    unitChip: {
-        borderWidth: 1,
-        borderColor: C.border,
-        borderRadius: 999,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        backgroundColor: "#121212",
-    },
-    unitChipActive: {
-        borderColor: C.accent,
-        backgroundColor: C.softCard,
-    },
-    unitChipText: {
-        color: C.muted,
-        fontSize: 12,
-        fontWeight: "600",
-    },
-    unitChipTextActive: {
-        color: C.accent,
+    summaryText: {
+        color: C.body,
+        fontSize: 13,
     },
     fieldLabel: {
         color: C.body,
         fontSize: 13,
-        fontWeight: "600",
+        fontWeight: '600',
         marginTop: 4,
     },
     planPickWrap: {
-        flexDirection: "row",
-        flexWrap: "wrap",
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 8,
     },
     planPickChip: {
@@ -961,22 +811,50 @@ const styles = StyleSheet.create({
         borderColor: C.border,
         paddingHorizontal: 10,
         paddingVertical: 6,
-        backgroundColor: C.softCard,
+        backgroundColor: '#10101A',
     },
     planPickText: {
-        color: C.accent,
+        color: C.amber,
+        fontSize: 12,
+    },
+    ingredientMeta: {
+        color: C.muted,
         fontSize: 12,
     },
     rowInputs: {
-        flexDirection: "row",
+        flexDirection: 'row',
         gap: 8,
     },
     rowInput: {
         flex: 1,
     },
     inlineButton: {
-        paddingHorizontal: 10,
-        justifyContent: "center",
+        justifyContent: 'center',
+    },
+    unitRow: {
+        flexDirection: 'row',
+        gap: 8,
+        flexWrap: 'wrap',
+    },
+    unitChip: {
+        borderWidth: 1,
+        borderColor: C.border,
+        borderRadius: 999,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: '#10101A',
+    },
+    unitChipActive: {
+        borderColor: C.amber,
+        backgroundColor: 'rgba(242,166,90,0.14)',
+    },
+    unitChipText: {
+        color: C.muted,
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    unitChipTextActive: {
+        color: C.amber,
     },
     scannerCard: {
         backgroundColor: C.card,
@@ -988,10 +866,10 @@ const styles = StyleSheet.create({
     scannerFrame: {
         height: 340,
         borderRadius: 14,
-        overflow: "hidden",
+        overflow: 'hidden',
         borderWidth: 1,
         borderColor: C.border,
-        backgroundColor: "#000",
+        backgroundColor: '#000',
     },
     scannerCamera: {
         flex: 1,

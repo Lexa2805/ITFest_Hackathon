@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 const C = {
     card: "#141414",
@@ -15,6 +15,7 @@ interface Props {
     name?: string | null;
     email?: string | null;
     completion: number;
+    avatarUri?: string | null;
     onPressAvatar: () => void;
 }
 
@@ -28,7 +29,7 @@ function initialsFromName(name?: string | null): string {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 }
 
-export function ProfileHeaderCard({ name, email, completion, onPressAvatar }: Props) {
+export function ProfileHeaderCard({ name, email, completion, avatarUri, onPressAvatar }: Props) {
     const initials = useMemo(() => initialsFromName(name), [name]);
 
     return (
@@ -36,7 +37,11 @@ export function ProfileHeaderCard({ name, email, completion, onPressAvatar }: Pr
             <View style={styles.row}>
                 {/* Tappable avatar for future image/avatar edit flow */}
                 <Pressable onPress={onPressAvatar} style={styles.avatar}>
-                    <Text style={styles.avatarText}>{initials}</Text>
+                    {avatarUri ? (
+                        <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                    ) : (
+                        <Text style={styles.avatarText}>{initials}</Text>
+                    )}
                 </Pressable>
 
                 <View style={{ flex: 1, gap: 2 }}>
@@ -84,6 +89,11 @@ const styles = StyleSheet.create({
         color: C.accent,
         fontWeight: "800",
         fontSize: 20,
+    },
+    avatarImage: {
+        width: "100%",
+        height: "100%",
+        borderRadius: 28,
     },
     name: {
         color: C.text,

@@ -10,7 +10,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const theme = colorScheme ?? 'light';
+  const theme = (colorScheme ?? 'dark') === 'light' ? 'dark' : (colorScheme ?? 'dark');
   const logout = useAuthStore((state) => state.logout);
 
   return (
@@ -20,25 +20,31 @@ export default function TabLayout() {
         tabBarInactiveTintColor: Colors[theme].tabIconDefault,
         tabBarStyle: {
           position: 'absolute',
-          left: 16,
-          right: 16,
-          bottom: 12,
-          borderRadius: 18,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 8,
+          left: 14,
+          right: 14,
+          bottom: 10,
+          borderRadius: 20,
+          height: 72,
+          paddingBottom: 10,
+          paddingTop: 10,
           borderTopWidth: 1,
-          borderColor: '#1E1E1E',
-          backgroundColor: '#141414',
+          borderColor: 'rgba(242,166,90,0.28)',
+          backgroundColor: '#14131D',
           shadowColor: '#000000',
-          shadowOpacity: 0.28,
-          shadowOffset: { width: 0, height: 8 },
-          shadowRadius: 16,
-          elevation: 6,
+          shadowOpacity: 0.45,
+          shadowOffset: { width: 0, height: 10 },
+          shadowRadius: 24,
+          elevation: 10,
         },
+        tabBarItemStyle: {
+          marginHorizontal: 4,
+          borderRadius: 14,
+        },
+        tabBarActiveBackgroundColor: 'rgba(242,166,90,0.16)',
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
+          fontSize: 11,
+          fontWeight: '700',
+          marginTop: -2,
         },
         // Disable the static render of the header on web
         // to prevent a hydration error in React Navigation v6.
@@ -85,10 +91,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="two"
         options={{
-          title: 'Fridge',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="snow" color={color} size={24} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -113,7 +116,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="health-upload"
         options={{
-          title: 'Health',
+          title: 'Fitness',
           tabBarIcon: ({ color }) => (
             <Ionicons name="pulse" color={color} size={24} />
           ),

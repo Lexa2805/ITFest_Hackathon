@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import datetime
+from typing import List, Dict, Any
 
 import httpx
 from fastapi import HTTPException, status
@@ -174,3 +175,72 @@ async def forward_shopping_list(user_id: str, list_id: str) -> dict:
         return {"detail": "Autonomous Shopping System is unavailable. Mocked successful forward.", "mocked": True}
     except httpx.HTTPStatusError as e:
         return {"detail": f"Autonomous Shopping System returned an error: {e.response.status_code}. Mocked successful forward.", "mocked": True}
+
+class ShoppingService:
+    async def generate_shopping_list(self, selected_recipes: List[Dict[str, Any]], fridge_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        needed_ingredients = []
+        for r in selected_recipes:
+            # handle both {"metadata": {"ingredients": [...]}} from RAG and direct "ingredients"
+            meta = r.get("metadata", {})
+            ingredients = meta.get("ingredients", []) if "ingredients" in meta else r.get("ingredients", [])
+            needed_ingredients.extend(ingredients)
+            
+        if not needed_ingredients:
+            return []
+            
+        inventory_info = json.dumps(fridge_items)
+        needed_info = json.dumps(needed_ingredients)
+
+        user_prompt = f"Fridge Inventory:\n{inventory_info}\n\nIngredients Needed for Recipes:\n{needed_info}"
+        
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt}
+        ]
+        
+        payload = {
+            "model": MODEL,
+            "messages": messages,
+            "temperature": 0.2
+        }
+
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                resp = await client.post(OPENROUTER_BASE_URL, json=payload, headers=headers)
+                resp.raise_for_status()
+            except httpx.HTTPError as exc:
+                logger.error(f"OpenRouter API error: {exc}")
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Failed to generate shopping list via AI."
+                )
+
+        body = resp.json()
+        if "choices" not in body or not body["choices"]:
+            raise HTTPException(status_code=500, detail="AI returned invalid response format.")
+            
+        raw_text = body["choices"][0]["message"]["content"]
+
+        cleaned = re.sub(r"```(?:json)?\s*", "", raw_text).strip().rstrip("`")
+        try:
+            shopping_data = json.loads(cleaned)
+        except json.JSONDecodeError:
+            match = re.search(r"\[.*\]", cleaned, re.DOTALL)
+            if match:
+                try:
+                    shopping_data = json.loads(match.group())
+                except json.JSONDecodeError:
+                    raise HTTPException(status_code=500, detail="AI returned unparseable output.")
+            else:
+                raise HTTPException(status_code=500, detail="AI returned unparseable output.")
+        
+        if not isinstance(shopping_data, list):
+            raise HTTPException(status_code=500, detail="AI did not return a list.")
+            
+        return shopping_data
+
