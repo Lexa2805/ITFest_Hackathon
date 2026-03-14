@@ -43,7 +43,7 @@ const C = {
     text: '#F7F4EF',
     body: '#C8C1B6',
     muted: '#8F8779',
-    amber: '#F2A65A',
+    amber: '#39FF88',
     coral: '#E7836D',
     danger: '#F08A7C',
 } as const;
@@ -618,8 +618,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
     },
     tabPillActive: {
-        borderColor: 'rgba(242,166,90,0.5)',
-        backgroundColor: 'rgba(242,166,90,0.16)',
+        borderColor: 'rgba(57,255,136,0.5)',
+        backgroundColor: 'rgba(57,255,136,0.16)',
     },
     tabPillText: {
         color: C.muted,
@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     primaryButtonText: {
-        color: '#2E1B06',
+        color: '#0F1412',
         fontSize: 14,
         fontWeight: '800',
     },
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
     },
     unitChipActive: {
         borderColor: C.amber,
-        backgroundColor: 'rgba(242,166,90,0.14)',
+        backgroundColor: 'rgba(57,255,136,0.14)',
     },
     unitChipText: {
         color: C.muted,

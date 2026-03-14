@@ -1,342 +1,321 @@
+/**
+ * HomeScreen — bento-box dashboard with cyber-wellness aesthetic.
+ * Large typography, neon glow accents, no borders — spacing-driven layout.
+ */
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useHealthStore } from '@/stores/healthStore';
 import { useAuthStore } from '@/stores/authStore';
-import { DailyBriefingCard } from '../../components/home/DailyBriefingCard';
-import { LifeScoreWidget } from '../../components/home/LifeScoreWidget';
+import { useLifeScoreStore } from '@/stores/lifeScoreStore';
+import { DailyBriefingCard } from '@/components/home/DailyBriefingCard';
+import { LifeScoreWidget } from '@/components/home/LifeScoreWidget';
 import { TrendSparkline } from '@/components/home/TrendSparkline';
 import { ExpiryAlertBanner } from '@/components/home/ExpiryAlertBanner';
+import { BentoCard } from '@/components/ui/BentoCard';
 import { getTrendData, type TrendResponse } from '@/services/trendApi';
 import { getStreaks, type StreakResponse } from '@/services/streakApi';
 import { getExpiryAlerts, type ExpiryAlertItem } from '@/services/expiryApi';
-import { useLifeScoreStore } from '@/stores/lifeScoreStore';
+import { theme } from '@/constants/theme';
 
 type HealthMetric = {
-    label: string;
-    value: string;
-    trend: string;
+  label: string;
+  value: string;
+  unit: string;
+  icon: string;
 };
 
-const C = {
-    bg: '#0D0D14',
-    bgSoft: '#11111A',
-    text: '#F7F4EF',
-    body: '#C8C1B6',
-    muted: '#8F8779',
-    amber: '#F2A65A',
-    coral: '#E7836D',
-    goldSoft: 'rgba(242,166,90,0.14)',
-    glassBorder: 'rgba(247,244,239,0.14)',
-    glassBg: 'rgba(255,255,255,0.05)',
-} as const;
-
-const mockHealthMetrics: HealthMetric[] = [
-    { label: 'Sleep', value: 'No data', trend: 'Upload health data' },
-    { label: 'Heart Rate', value: 'No data', trend: 'Upload health data' },
-    { label: 'Steps', value: 'No data', trend: 'Upload health data' },
-    { label: 'Calories', value: 'No data', trend: 'Upload health data' },
+const mockMetrics: HealthMetric[] = [
+  { label: 'Sleep', value: '--', unit: '', icon: '🌙' },
+  { label: 'Heart Rate', value: '--', unit: 'bpm', icon: '💚' },
+  { label: 'Steps', value: '--', unit: '', icon: '👟' },
+  { label: 'Calories', value: '--', unit: 'kcal', icon: '🔥' },
 ];
 
-function GlassCard({ children, highlighted = false }: { children: React.ReactNode; highlighted?: boolean }) {
-    return (
-        <View style={[styles.glassWrap, highlighted && styles.glassWrapActive]}>
-            <BlurView intensity={26} tint="dark" style={styles.glassBlur}>
-                <View style={[styles.glassInner, highlighted && styles.glassInnerActive]}>{children}</View>
-            </BlurView>
-        </View>
-    );
-}
-
 export default function HomeScreen() {
-    const healthData = useHealthStore((state) => state.healthData);
-    const loadHealthData = useHealthStore((state) => state.loadHealthData);
-    const isHealthInitialized = useHealthStore((state) => state.isInitialized);
-    const user = useAuthStore((state) => state.user);
-    const fetchLifeScore = useLifeScoreStore((state) => state.fetchLifeScore);
+  const healthData = useHealthStore((s) => s.healthData);
+  const loadHealthData = useHealthStore((s) => s.loadHealthData);
+  const isHealthInitialized = useHealthStore((s) => s.isInitialized);
+  const user = useAuthStore((s) => s.user);
+  const fetchLifeScore = useLifeScoreStore((s) => s.fetchLifeScore);
 
-    const [trendSleep, setTrendSleep] = useState<TrendResponse | null>(null);
-    const [trendSteps, setTrendSteps] = useState<TrendResponse | null>(null);
-    const [trendCalories, setTrendCalories] = useState<TrendResponse | null>(null);
-    const [streaks, setStreaks] = useState<StreakResponse | null>(null);
-    const [expiryAlerts, setExpiryAlerts] = useState<ExpiryAlertItem[]>([]);
+  const [trendSleep, setTrendSleep] = useState<TrendResponse | null>(null);
+  const [trendSteps, setTrendSteps] = useState<TrendResponse | null>(null);
+  const [trendCalories, setTrendCalories] = useState<TrendResponse | null>(null);
+  const [streaks, setStreaks] = useState<StreakResponse | null>(null);
+  const [expiryAlerts, setExpiryAlerts] = useState<ExpiryAlertItem[]>([]);
 
-    useEffect(() => {
-        if (!isHealthInitialized) {
-            loadHealthData();
-        }
+  useEffect(() => {
+    if (!isHealthInitialized) loadHealthData();
+    getTrendData('sleep_hours', 7).then(setTrendSleep).catch(() => {});
+    getTrendData('steps', 7).then(setTrendSteps).catch(() => {});
+    getTrendData('calories', 7).then(setTrendCalories).catch(() => {});
+    getStreaks().then(setStreaks).catch(() => {});
+    getExpiryAlerts().then(setExpiryAlerts).catch(() => {});
+    fetchLifeScore();
+  }, []);
 
-        getTrendData('sleep_hours', 7).then(setTrendSleep).catch(() => { });
-        getTrendData('steps', 7).then(setTrendSteps).catch(() => { });
-        getTrendData('calories', 7).then(setTrendCalories).catch(() => { });
-        getStreaks().then(setStreaks).catch(() => { });
-        getExpiryAlerts().then(setExpiryAlerts).catch(() => { });
-        fetchLifeScore();
-    }, []);
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 18) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
 
-    const greeting = useMemo(() => {
-        const hour = new Date().getHours();
-        if (hour < 12) return 'Good morning';
-        if (hour < 18) return 'Good afternoon';
-        return 'Good evening';
-    }, []);
+  const userName = useMemo(() => {
+    if (user?.email) {
+      const name = user.email.split('@')[0];
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    return 'there';
+  }, [user]);
 
-    const userName = useMemo(() => {
-        if (user?.email) {
-            const emailName = user.email.split('@')[0];
-            return emailName.charAt(0).toUpperCase() + emailName.slice(1);
-        }
-        return 'there';
-    }, [user]);
+  const healthMetrics: HealthMetric[] = useMemo(() => {
+    if (!healthData) return mockMetrics;
+    const m = healthData.parsed_metrics;
+    const fmtH = (hrs: number) => {
+      const h = Math.floor(hrs);
+      const mins = Math.round((hrs - h) * 60);
+      return `${h}h ${mins}m`;
+    };
+    const fmtN = (n: number) => Math.round(n).toLocaleString();
+    return [
+      { label: 'Sleep', value: fmtH(m.sleep_analysis.average), unit: '', icon: '🌙' },
+      { label: 'Heart Rate', value: `${Math.round(m.heart_rate.average)}`, unit: 'bpm', icon: '💚' },
+      { label: 'Steps', value: fmtN(m.step_count.average), unit: '', icon: '👟' },
+      { label: 'Calories', value: fmtN(m.active_energy_burned.average), unit: 'kcal', icon: '🔥' },
+    ];
+  }, [healthData]);
 
-    const healthMetrics: HealthMetric[] = useMemo(() => {
-        if (!healthData) {
-            return mockHealthMetrics;
-        }
-
-        const m = healthData.parsed_metrics;
-
-        const formatHours = (hours: number): string => {
-            const h = Math.floor(hours);
-            const mins = Math.round((hours - h) * 60);
-            return `${h}h ${mins}m`;
-        };
-
-        const formatNumber = (num: number): string => Math.round(num).toLocaleString();
-
-        return [
-            {
-                label: 'Sleep',
-                value: formatHours(m.sleep_analysis.average),
-                trend: `${m.sleep_analysis.sample_count} nights`,
-            },
-            {
-                label: 'Heart Rate',
-                value: `${Math.round(m.heart_rate.average)} bpm`,
-                trend: 'Average',
-            },
-            {
-                label: 'Steps',
-                value: formatNumber(m.step_count.average),
-                trend: 'Daily avg',
-            },
-            {
-                label: 'Calories',
-                value: formatNumber(m.active_energy_burned.average),
-                trend: 'Daily avg',
-            },
-        ];
-    }, [healthData]);
-
-    const primaryStreakDays = useMemo(() => {
-        if (!streaks) return 0;
-        return Math.max(
-            streaks.checkin.current_streak,
-            streaks.meal_logged.current_streak,
-            streaks.calorie_goal.current_streak,
-        );
-    }, [streaks]);
-
-    return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <View style={styles.headerBlock}>
-                    <Text style={styles.greeting}>{greeting}</Text>
-                    <Text style={styles.userName}>{userName}</Text>
-                    <Text style={styles.caption}>Today has one goal: consistent, quality movement.</Text>
-                </View>
-
-                <View style={styles.heroWrap}>
-                    <LifeScoreWidget />
-                </View>
-
-                {streaks ? (
-                    <View style={styles.streakBar}>
-                        <View style={styles.streakMainRow}>
-                            <Text style={styles.streakEmoji}>🔥</Text>
-                            <Text style={styles.streakValue}>{primaryStreakDays} day streak</Text>
-                        </View>
-                        <View style={styles.streakMiniRow}>
-                            <Text style={styles.streakMiniText}>Check-in {streaks.checkin.current_streak}</Text>
-                            <Text style={styles.streakMiniText}>Nutrition {streaks.meal_logged.current_streak}</Text>
-                            <Text style={styles.streakMiniText}>Goal {streaks.calorie_goal.current_streak}</Text>
-                        </View>
-                    </View>
-                ) : null}
-
-                <DailyBriefingCard />
-
-                {expiryAlerts.length > 0 ? <ExpiryAlertBanner items={expiryAlerts} /> : null}
-
-                <View style={styles.sectionRow}>
-                    <Text style={styles.sectionTitle}>Activity</Text>
-                    <Text style={styles.sectionHint}>Live overview</Text>
-                </View>
-
-                <View style={styles.metricsGrid}>
-                    {healthMetrics.map((metric, index) => (
-                        <GlassCard key={metric.label} highlighted={index === 0}>
-                            <Text style={styles.metricLabel}>{metric.label}</Text>
-                            <Text style={styles.metricValue}>{metric.value}</Text>
-                            <Text style={styles.metricTrend}>{metric.trend}</Text>
-                        </GlassCard>
-                    ))}
-                </View>
-
-                <View style={styles.trendCard}>
-                    <Text style={styles.sectionTitle}>7-day movement pulse</Text>
-                    <View style={styles.trendRow}>
-                        <TrendSparkline dataPoints={trendSleep?.data_points ?? []} label="Sleep" />
-                        <TrendSparkline dataPoints={trendSteps?.data_points ?? []} label="Steps" />
-                        <TrendSparkline dataPoints={trendCalories?.data_points ?? []} label="Calories" />
-                    </View>
-                </View>
-            </ScrollView>
-        </SafeAreaView>
+  const primaryStreak = useMemo(() => {
+    if (!streaks) return 0;
+    return Math.max(
+      streaks.checkin.current_streak,
+      streaks.meal_logged.current_streak,
+      streaks.calorie_goal.current_streak,
     );
+  }, [streaks]);
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Greeting ── */}
+        <Animated.View entering={FadeInUp.duration(500)} style={styles.greetingBlock}>
+          <Text style={styles.greetingLabel}>{greeting}</Text>
+          <Text style={styles.greetingName}>{userName}</Text>
+        </Animated.View>
+
+        {/* ── Life Score Hero ── */}
+        <Animated.View entering={FadeInDown.duration(600).delay(100)}>
+          <LifeScoreWidget />
+        </Animated.View>
+
+        {/* ── Streak pill ── */}
+        {streaks && (
+          <Animated.View entering={FadeInDown.duration(500).delay(200)} style={styles.streakPill}>
+            <LinearGradient
+              colors={['rgba(57,255,136,0.12)', 'rgba(57,255,136,0.04)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.streakGradient}
+            >
+              <Text style={styles.streakFire}>🔥</Text>
+              <Text style={styles.streakCount}>{primaryStreak}</Text>
+              <Text style={styles.streakLabel}>day streak</Text>
+              <View style={styles.streakDivider} />
+              <Text style={styles.streakMini}>Check-in {streaks.checkin.current_streak}</Text>
+              <Text style={styles.streakMini}>·</Text>
+              <Text style={styles.streakMini}>Meals {streaks.meal_logged.current_streak}</Text>
+            </LinearGradient>
+          </Animated.View>
+        )}
+
+        {/* ── Daily Briefing ── */}
+        <Animated.View entering={FadeInDown.duration(500).delay(300)}>
+          <DailyBriefingCard />
+        </Animated.View>
+
+        {/* ── Expiry Alerts ── */}
+        {expiryAlerts.length > 0 && (
+          <Animated.View entering={FadeInDown.duration(500).delay(350)}>
+            <ExpiryAlertBanner items={expiryAlerts} />
+          </Animated.View>
+        )}
+
+        {/* ── Activity Bento Grid ── */}
+        <Animated.View entering={FadeInDown.duration(500).delay(400)}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Activity</Text>
+            <Text style={styles.sectionHint}>Live overview</Text>
+          </View>
+
+          <View style={styles.bentoGrid}>
+            {healthMetrics.map((metric, i) => (
+              <BentoCard key={metric.label} highlighted={i === 0}>
+                <Text style={styles.metricIcon}>{metric.icon}</Text>
+                <Text style={styles.metricLabel}>{metric.label}</Text>
+                <View style={styles.metricValueRow}>
+                  <Text style={styles.metricValue}>{metric.value}</Text>
+                  {metric.unit ? (
+                    <Text style={styles.metricUnit}>{metric.unit}</Text>
+                  ) : null}
+                </View>
+              </BentoCard>
+            ))}
+          </View>
+        </Animated.View>
+
+        {/* ── 7-day Trends ── */}
+        <Animated.View entering={FadeInDown.duration(500).delay(500)} style={styles.trendSection}>
+          <Text style={styles.sectionTitle}>7-day pulse</Text>
+          <View style={styles.trendRow}>
+            <TrendSparkline dataPoints={trendSleep?.data_points ?? []} label="Sleep" />
+            <TrendSparkline dataPoints={trendSteps?.data_points ?? []} label="Steps" />
+            <TrendSparkline dataPoints={trendCalories?.data_points ?? []} label="Calories" />
+          </View>
+        </Animated.View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
+
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
-    content: {
-        paddingHorizontal: 18,
-        paddingTop: 12,
-        paddingBottom: 28,
-        gap: 14,
-    },
-    headerBlock: {
-        gap: 2,
-    },
-    greeting: {
-        fontSize: 16,
-        color: C.muted,
-        fontWeight: '500',
-    },
-    userName: {
-        fontSize: 34,
-        color: C.text,
-        fontWeight: '800',
-        letterSpacing: 0.4,
-    },
-    caption: {
-        color: C.body,
-        fontSize: 14,
-        marginTop: 2,
-    },
-    heroWrap: {
-        marginTop: 2,
-    },
-    streakBar: {
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: 'rgba(242,166,90,0.5)',
-        backgroundColor: C.goldSoft,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        gap: 8,
-    },
-    streakMainRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    streakEmoji: {
-        fontSize: 20,
-    },
-    streakValue: {
-        color: C.amber,
-        fontSize: 24,
-        fontWeight: '800',
-    },
-    streakMiniRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 8,
-    },
-    streakMiniText: {
-        color: C.body,
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    sectionRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 2,
-    },
-    sectionTitle: {
-        color: C.text,
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    sectionHint: {
-        color: C.muted,
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    metricsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
-    },
-    glassWrap: {
-        width: '48.5%',
-        borderRadius: 16,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: C.glassBorder,
-    },
-    glassWrapActive: {
-        shadowColor: C.amber,
-        shadowOpacity: 0.28,
-        shadowOffset: { width: 0, height: 0 },
-        shadowRadius: 16,
-        elevation: 6,
-    },
-    glassBlur: {
-        width: '100%',
-    },
-    glassInner: {
-        backgroundColor: C.glassBg,
-        padding: 14,
-        gap: 5,
-        minHeight: 104,
-    },
-    glassInnerActive: {
-        borderLeftWidth: 2,
-        borderLeftColor: C.coral,
-    },
-    metricLabel: {
-        color: C.muted,
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    metricValue: {
-        color: C.text,
-        fontSize: 24,
-        fontWeight: '800',
-    },
-    metricTrend: {
-        color: C.body,
-        fontSize: 12,
-        fontWeight: '500',
-    },
-    trendCard: {
-        backgroundColor: C.bgSoft,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(247,244,239,0.08)',
-        padding: 14,
-        gap: 10,
-    },
-    trendRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 8,
-    },
+  safe: {
+    flex: 1,
+    backgroundColor: theme.colors.background.main,
+  },
+  scroll: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 100, // room for floating tab bar
+    gap: 16,
+  },
+
+  /* Greeting */
+  greetingBlock: {
+    gap: 2,
+  },
+  greetingLabel: {
+    fontSize: 15,
+    color: theme.colors.text.muted,
+    fontWeight: '500',
+  },
+  greetingName: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: theme.colors.text.primary,
+    letterSpacing: 0.3,
+  },
+
+  /* Streak pill */
+  streakPill: {
+    borderRadius: theme.radius.xl,
+    overflow: 'hidden',
+  },
+  streakGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  streakFire: {
+    fontSize: 18,
+  },
+  streakCount: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: theme.colors.green.primary,
+  },
+  streakLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.secondary,
+  },
+  streakDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: theme.colors.ui.divider,
+    marginHorizontal: 4,
+  },
+  streakMini: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.colors.text.muted,
+  },
+
+  /* Section headers */
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+  },
+  sectionHint: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.text.muted,
+  },
+
+  /* Bento grid */
+  bentoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+
+  /* Metric card content */
+  metricIcon: {
+    fontSize: 20,
+    marginBottom: 8,
+  },
+  metricLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.text.muted,
+    letterSpacing: 0.5,
+  },
+  metricValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+    marginTop: 4,
+  },
+  metricValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: theme.colors.text.primary,
+  },
+  metricUnit: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.text.muted,
+  },
+
+  /* Trends */
+  trendSection: {
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.radius.lg,
+    padding: 16,
+    gap: 12,
+  },
+  trendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
 });

@@ -18,13 +18,13 @@ export function FlowEntryCard({ icon, title, subtitle, onPress }: FlowEntryCardP
       accessibilityLabel={title}
     >
       <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={24} color="#F2A65A" />
+        <Ionicons name={icon} size={24} color="#39FF88" />
       </View>
       <View style={styles.textWrap}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color="#F2A65A" />
+      <Ionicons name="chevron-forward" size={18} color="#39FF88" />
     </Pressable>
   );
 }
@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(242,166,90,0.12)',
+    backgroundColor: 'rgba(57,255,136,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },

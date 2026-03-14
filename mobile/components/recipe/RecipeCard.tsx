@@ -72,12 +72,12 @@ const styles = StyleSheet.create({
   },
   name: { flex: 1, color: '#F7F4EF', fontSize: 16, fontWeight: '700' },
   badge: {
-    backgroundColor: 'rgba(242,166,90,0.18)',
+    backgroundColor: 'rgba(57,255,136,0.18)',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  badgeText: { color: '#F2A65A', fontSize: 12, fontWeight: '700' },
+  badgeText: { color: '#39FF88', fontSize: 12, fontWeight: '700' },
   macros: { color: '#C8C1B6', fontSize: 12 },
   missing: { color: '#E7836D', fontSize: 12, fontWeight: '600' },
 });

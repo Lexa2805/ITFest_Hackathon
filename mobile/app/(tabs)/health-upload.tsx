@@ -13,7 +13,7 @@ const C = {
     text: '#F7F4EF',
     body: '#C8C1B6',
     muted: '#8F8779',
-    amber: '#F2A65A',
+    amber: '#39FF88',
     coral: '#E7836D',
     border: 'rgba(247,244,239,0.14)',
     glass: 'rgba(255,255,255,0.05)',
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     uploadButtonText: {
-        color: '#2E1B06',
+        color: '#0F1412',
         fontSize: 14,
         fontWeight: '800',
     },

@@ -114,11 +114,11 @@ const styles = StyleSheet.create({
   stateText: { color: '#F7F4EF', fontSize: 16, fontWeight: '600', textAlign: 'center' },
   stateSubtext: { color: '#6B6780', fontSize: 13, textAlign: 'center' },
   retryBtn: {
-    backgroundColor: 'rgba(242,166,90,0.15)',
+    backgroundColor: 'rgba(57,255,136,0.15)',
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 10,
     marginTop: 4,
   },
-  retryText: { color: '#F2A65A', fontSize: 14, fontWeight: '700' },
+  retryText: { color: '#39FF88', fontSize: 14, fontWeight: '700' },
 });

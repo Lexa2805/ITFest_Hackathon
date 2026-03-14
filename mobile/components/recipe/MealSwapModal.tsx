@@ -72,7 +72,7 @@ export function MealSwapModal({
           {/* Body */}
           {isLoadingSuggestions && (
             <View style={styles.center}>
-              <ActivityIndicator color="#F2A65A" size="large" />
+              <ActivityIndicator color="#39FF88" size="large" />
             </View>
           )}
 
@@ -146,12 +146,12 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   errorText: { color: '#E7836D', fontSize: 14 },
   retryBtn: {
-    backgroundColor: 'rgba(242,166,90,0.15)',
+    backgroundColor: 'rgba(57,255,136,0.15)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  retryText: { color: '#F2A65A', fontSize: 13, fontWeight: '700' },
+  retryText: { color: '#39FF88', fontSize: 13, fontWeight: '700' },
   list: { paddingHorizontal: 16 },
   row: {
     flexDirection: 'row',
@@ -165,10 +165,10 @@ const styles = StyleSheet.create({
   recipeName: { color: '#F7F4EF', fontSize: 14, fontWeight: '600' },
   macroText: { color: '#C8C1B6', fontSize: 12, marginTop: 2 },
   scoreBadge: {
-    backgroundColor: 'rgba(242,166,90,0.18)',
+    backgroundColor: 'rgba(57,255,136,0.18)',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  scoreText: { color: '#F2A65A', fontSize: 12, fontWeight: '700' },
+  scoreText: { color: '#39FF88', fontSize: 12, fontWeight: '700' },
 });

@@ -22,7 +22,7 @@ export function ShoppingCategory({ category, items }: ShoppingCategoryProps) {
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Ionicons name={icon} size={18} color="#F2A65A" />
+        <Ionicons name={icon} size={18} color="#39FF88" />
         <Text style={styles.categoryName}>{category}</Text>
       </View>
       {items.map((item, i) => (
@@ -51,5 +51,5 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(247,244,239,0.06)',
   },
   itemName: { color: '#C8C1B6', fontSize: 14, flex: 1 },
-  itemQty: { color: '#F2A65A', fontSize: 13, fontWeight: '600' },
+  itemQty: { color: '#39FF88', fontSize: 13, fontWeight: '600' },
 });

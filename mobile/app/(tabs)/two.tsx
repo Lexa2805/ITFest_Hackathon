@@ -22,9 +22,9 @@ const C = {
     text: '#F7F4EF',
     body: '#C8C1B6',
     muted: '#8F8779',
-    amber: '#F2A65A',
+    amber: '#39FF88',
     success: '#7DCEA0',
-    warning: '#F2A65A',
+    warning: '#39FF88',
     danger: '#F08A7C',
 } as const;
 
@@ -208,7 +208,7 @@ export function FridgeScreenContent({ embedded = false }: { embedded?: boolean }
                     />
                     <TextInput placeholder="Category" placeholderTextColor={C.muted} value={category} onChangeText={setCategory} style={styles.input} />
                     <Pressable style={[styles.primaryButton, isLoading && styles.disabledButton]} onPress={handleAddIngredient} disabled={isLoading}>
-                        {isLoading ? <ActivityIndicator color="#2E1B06" /> : <Text style={styles.primaryButtonText}>Add Ingredient</Text>}
+                        {isLoading ? <ActivityIndicator color="#0F1412" /> : <Text style={styles.primaryButtonText}>Add Ingredient</Text>}
                     </Pressable>
                 </View>
 
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
     },
     primaryButtonText: {
-        color: '#2E1B06',
+        color: '#0F1412',
         fontSize: 14,
         fontWeight: '800',
     },

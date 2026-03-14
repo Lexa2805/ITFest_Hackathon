@@ -66,7 +66,7 @@ export default function ShoppingListScreen() {
       <SafeAreaView style={styles.container}>
         <ScreenHeader title="Shopping List" />
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#F2A65A" />
+          <ActivityIndicator size="large" color="#39FF88" />
           <Text style={styles.stateText}>
             {weekPlan ? 'Building your weekly list...' : 'Building your list...'}
           </Text>
@@ -136,11 +136,11 @@ const styles = StyleSheet.create({
   },
   stateText: { color: '#F7F4EF', fontSize: 16, fontWeight: '600', textAlign: 'center' },
   retryBtn: {
-    backgroundColor: 'rgba(242,166,90,0.15)',
+    backgroundColor: 'rgba(57,255,136,0.15)',
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 10,
     marginTop: 4,
   },
-  retryText: { color: '#F2A65A', fontSize: 14, fontWeight: '700' },
+  retryText: { color: '#39FF88', fontSize: 14, fontWeight: '700' },
 });

@@ -89,7 +89,7 @@ export default function WeeklyPlanScreen() {
       {/* Loading */}
       {isLoadingPlan && (
         <View style={styles.stateContainer}>
-          <ActivityIndicator color="#F2A65A" size="large" />
+          <ActivityIndicator color="#39FF88" size="large" />
           <Text style={styles.stateText}>Generating your week...</Text>
         </View>
       )}
@@ -128,7 +128,7 @@ export default function WeeklyPlanScreen() {
               accessibilityLabel="Get Shopping List"
             >
               {isLoadingShoppingList ? (
-                <ActivityIndicator color="#0D0D14" size="small" />
+                <ActivityIndicator color="#0F1412" size="small" />
               ) : (
                 <Text style={styles.primaryBtnText}>Get Shopping List</Text>
               )}
@@ -163,13 +163,13 @@ const styles = StyleSheet.create({
   },
   stateText: { color: '#F7F4EF', fontSize: 16, fontWeight: '600', textAlign: 'center' },
   retryBtn: {
-    backgroundColor: 'rgba(242,166,90,0.15)',
+    backgroundColor: 'rgba(57,255,136,0.15)',
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 10,
     marginTop: 4,
   },
-  retryText: { color: '#F2A65A', fontSize: 14, fontWeight: '700' },
+  retryText: { color: '#39FF88', fontSize: 14, fontWeight: '700' },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -183,12 +183,12 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(247,244,239,0.08)',
   },
   primaryBtn: {
-    backgroundColor: '#F2A65A',
+    backgroundColor: '#39FF88',
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryBtnDisabled: { opacity: 0.6 },
-  primaryBtnText: { color: '#0D0D14', fontSize: 16, fontWeight: '700' },
+  primaryBtnText: { color: '#0F1412', fontSize: 16, fontWeight: '700' },
 });

@@ -31,7 +31,7 @@ const C = {
     text: '#F7F4EF',
     body: '#C8C1B6',
     muted: '#8F8779',
-    amber: '#F2A65A',
+    amber: '#39FF88',
     border: 'rgba(247,244,239,0.14)',
     card: '#13121C',
 } as const;
@@ -740,8 +740,8 @@ const styles = StyleSheet.create({
         paddingVertical: 7,
     },
     chipSelected: {
-        borderColor: 'rgba(242,166,90,0.5)',
-        backgroundColor: 'rgba(242,166,90,0.14)',
+        borderColor: 'rgba(57,255,136,0.5)',
+        backgroundColor: 'rgba(57,255,136,0.14)',
     },
     chipText: {
         color: C.body,
@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
         minHeight: 42,
     },
     saveButtonText: {
-        color: '#2E1B06',
+        color: '#0F1412',
         fontSize: 14,
         fontWeight: '800',
     },

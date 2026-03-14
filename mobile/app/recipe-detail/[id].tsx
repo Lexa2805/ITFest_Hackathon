@@ -123,7 +123,7 @@ export default function RecipeDetailScreen() {
 
         {isLoadingInstructions && (
           <View style={styles.instructionsLoading}>
-            <ActivityIndicator color="#F2A65A" size="small" />
+            <ActivityIndicator color="#39FF88" size="small" />
             <Text style={styles.loadingText}>Loading instructions…</Text>
           </View>
         )}
@@ -161,7 +161,7 @@ export default function RecipeDetailScreen() {
           accessibilityLabel="Generate Shopping List"
         >
           {isLoadingShoppingList ? (
-            <ActivityIndicator color="#0D0D14" size="small" />
+            <ActivityIndicator color="#0F1412" size="small" />
           ) : (
             <Text style={styles.primaryBtnText}>Generate Shopping List</Text>
           )}
@@ -178,12 +178,12 @@ const styles = StyleSheet.create({
 
   /* Badge */
   badge: {
-    backgroundColor: 'rgba(242,166,90,0.18)',
+    backgroundColor: 'rgba(57,255,136,0.18)',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  badgeText: { color: '#F2A65A', fontSize: 13, fontWeight: '700' },
+  badgeText: { color: '#39FF88', fontSize: 13, fontWeight: '700' },
 
   /* Macros */
   macroRow: {
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   macroDot: { color: '#6B6780', fontSize: 13 },
 
   /* Source */
-  sourceLink: { color: '#F2A65A', fontSize: 13, marginBottom: 20, textDecorationLine: 'underline' },
+  sourceLink: { color: '#39FF88', fontSize: 13, marginBottom: 20, textDecorationLine: 'underline' },
 
   /* Section */
   sectionTitle: {
@@ -218,18 +218,18 @@ const styles = StyleSheet.create({
   instructionsError: { alignItems: 'center', gap: 8, paddingVertical: 16 },
   errorText: { color: '#E7836D', fontSize: 14, fontWeight: '600' },
   retryBtn: {
-    backgroundColor: 'rgba(242,166,90,0.15)',
+    backgroundColor: 'rgba(57,255,136,0.15)',
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 10,
     marginTop: 4,
   },
-  retryText: { color: '#F2A65A', fontSize: 14, fontWeight: '700' },
+  retryText: { color: '#39FF88', fontSize: 14, fontWeight: '700' },
 
   /* Steps */
   stepRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   stepNumber: {
-    color: '#F2A65A',
+    color: '#39FF88',
     fontSize: 14,
     fontWeight: '700',
     minWidth: 20,
@@ -245,11 +245,11 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(107,103,128,0.2)',
   },
   primaryBtn: {
-    backgroundColor: '#F2A65A',
+    backgroundColor: '#39FF88',
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
   },
   primaryBtnDisabled: { opacity: 0.6 },
-  primaryBtnText: { color: '#0D0D14', fontSize: 15, fontWeight: '700' },
+  primaryBtnText: { color: '#0F1412', fontSize: 15, fontWeight: '700' },
 });

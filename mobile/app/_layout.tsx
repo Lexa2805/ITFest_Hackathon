@@ -9,6 +9,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useAuthStore } from "@/stores/authStore";
 import { ProfileProvider } from "@/contexts/ProfileContext";
+import { theme } from "@/constants/theme";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -23,12 +24,12 @@ const AppTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    primary: "#00E676",
-    background: "#0A0A0A",
-    card: "#141414",
-    text: "#F5F5F5",
-    border: "#1E1E1E",
-    notification: "#00E676",
+    primary: theme.colors.green.primary,
+    background: theme.colors.background.main,
+    card: theme.colors.background.secondary,
+    text: theme.colors.text.primary,
+    border: theme.colors.ui.divider,
+    notification: theme.colors.green.primary,
   },
 };
 

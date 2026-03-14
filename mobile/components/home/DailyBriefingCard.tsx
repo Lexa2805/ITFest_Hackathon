@@ -7,7 +7,7 @@ import { useBriefingStore } from '@/stores/briefingStore';
 const C = {
     border: 'rgba(247,244,239,0.14)',
     glass: 'rgba(255,255,255,0.04)',
-    title: '#F2A65A',
+    title: '#39FF88',
     body: '#DED7CA',
     skeleton: '#1A1A26',
 } as const;

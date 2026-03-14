@@ -47,7 +47,7 @@ export function DayCard({ dayPlan, dayIndex, onSwapMeal }: DayCardProps) {
             accessibilityRole="button"
             accessibilityLabel={`Swap ${meal.meal_type}`}
           >
-            <Ionicons name="swap-horizontal" size={20} color="#F2A65A" />
+            <Ionicons name="swap-horizontal" size={20} color="#39FF88" />
           </Pressable>
         </View>
       ))}
@@ -72,12 +72,12 @@ const styles = StyleSheet.create({
   },
   dayName: { color: '#F7F4EF', fontSize: 16, fontWeight: '700' },
   macrosBadge: {
-    backgroundColor: 'rgba(242,166,90,0.12)',
+    backgroundColor: 'rgba(57,255,136,0.12)',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  macrosText: { color: '#F2A65A', fontSize: 11, fontWeight: '600' },
+  macrosText: { color: '#39FF88', fontSize: 11, fontWeight: '600' },
   mealRow: {
     flexDirection: 'row',
     alignItems: 'center',
