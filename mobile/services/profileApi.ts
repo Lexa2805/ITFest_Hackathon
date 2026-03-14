@@ -29,6 +29,7 @@ export interface ProfilePayload {
     activity_level?: ActivityLevel | null;
     goal?: HealthGoal | null;
     has_apple_watch: boolean;
+    weekly_budget?: number | null;
 }
 
 export interface ProfileResponse {
@@ -42,6 +43,7 @@ export interface ProfileResponse {
     activity_level?: ActivityLevel | null;
     goal?: HealthGoal | null;
     has_apple_watch: boolean;
+    weekly_budget?: number | null;
     created_at?: string;
     updated_at?: string;
 }

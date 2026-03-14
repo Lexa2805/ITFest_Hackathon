@@ -35,6 +35,7 @@ class ProfileUpsertRequest(BaseModel):
     activity_level: ActivityLevel | None = None
     goal: HealthGoal | None = None
     has_apple_watch: bool = True
+    weekly_budget: float | None = Field(default=None, ge=0)
 
 
 class ProfileResponse(BaseModel):
@@ -50,6 +51,7 @@ class ProfileResponse(BaseModel):
     activity_level: str | None = None
     goal: str | None = None
     has_apple_watch: bool = True
+    weekly_budget: float | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

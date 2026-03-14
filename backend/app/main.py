@@ -16,6 +16,7 @@ from app.api.nutrition_agent import router as nutrition_agent_router
 from app.api.nutrition import router as nutrition_router
 from app.api.photo_meal import router as photo_meal_router
 from app.api.profile import router as profile_router
+from app.api.recipes import router as recipes_router
 from app.api.streaks import router as streaks_router
 from app.api.trends import router as trends_router
 
@@ -50,6 +51,7 @@ app.include_router(nutrition_agent_router)
 app.include_router(nutrition_router)
 app.include_router(photo_meal_router)
 app.include_router(profile_router)
+app.include_router(recipes_router, prefix="/recipes", tags=["recipes"])
 app.include_router(streaks_router)
 app.include_router(trends_router)
 

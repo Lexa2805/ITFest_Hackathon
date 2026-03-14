@@ -24,16 +24,16 @@ class ShoppingListRequest(BaseModel):
 
 @router.post("/suggest")
 async def suggest_recipes(req: SuggestRecipeRequest):
-    supabase = get_supabase()
+    supabase = await get_supabase()
     rag_service = RecipeRAGService(supabase)
-    results = rag_service.get_recipes_from_fridge(req.fridge_items, req.user_profile, top_k=5)
+    results = await rag_service.get_recipes_from_fridge(req.fridge_items, req.user_profile, top_k=5)
     return {"suggestions": results}
 
 @router.post("/weekly-plan")
 async def weekly_plan(req: WeeklyPlanRequest):
-    supabase = get_supabase()
+    supabase = await get_supabase()
     rag_service = RecipeRAGService(supabase)
-    plan = rag_service.get_weekly_meal_plan(req.user_profile, req.fridge_items)
+    plan = await rag_service.get_weekly_meal_plan(req.user_profile, req.fridge_items)
     return plan
 
 @router.post("/shopping-list")
@@ -45,8 +45,8 @@ async def create_shopping_list(req: ShoppingListRequest):
 @router.get("/{recipe_id}/instructions")
 async def get_recipe_instructions(recipe_id: str):
     # Fetch recipe from DB to get source_url
-    supabase = get_supabase()
-    response = supabase.table("recipe_embeddings").select("source_url").eq("id", recipe_id).execute()
+    supabase = await get_supabase()
+    response = await supabase.table("recipe_embeddings").select("source_url").eq("id", recipe_id).execute()
     data = response.data
     
     if not data or not data[0].get("source_url"):

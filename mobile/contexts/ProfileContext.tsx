@@ -132,6 +132,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
                 activity_level: profile?.activity_level,
                 goal: profile?.goal,
                 has_apple_watch: enabled,
+                weekly_budget: profile?.weekly_budget,
             });
         },
         [profile, updateProfile, user?.email]

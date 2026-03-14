@@ -138,6 +138,7 @@ export default function ProfileScreen() {
     const [goal, setGoal] = useState<HealthGoal | null>(null);
     const [hasAppleWatch, setHasAppleWatch] = useState(true);
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
+    const [weeklyBudget, setWeeklyBudget] = useState('');
 
     const [heartRate, setHeartRate] = useState('');
     const [sleepHours, setSleepHours] = useState('');
@@ -160,6 +161,7 @@ export default function ProfileScreen() {
         setActivityLevel((profile.activity_level as ActivityLevel | null) ?? null);
         setGoal((profile.goal as HealthGoal | null) ?? null);
         setHasAppleWatch(profile.has_apple_watch);
+        setWeeklyBudget(typeof profile.weekly_budget === 'number' ? String(profile.weekly_budget) : '');
 
         if (typeof profile.weight === 'number') {
             setWeight(weightUnit === 'kg' ? profile.weight.toFixed(1) : toLbs(profile.weight).toFixed(1));
@@ -247,6 +249,7 @@ export default function ProfileScreen() {
                 activity_level: activityLevel,
                 goal,
                 has_apple_watch: hasAppleWatch,
+                weekly_budget: weeklyBudget.trim() ? parseFloat(weeklyBudget) || null : null,
             });
             Alert.alert('Saved', 'Your profile has been updated.');
         } catch (error: any) {
@@ -533,6 +536,8 @@ export default function ProfileScreen() {
                             ))}
                         </View>
                     </View>
+
+                    <Field label="Weekly food budget ($)" value={weeklyBudget} onChangeText={setWeeklyBudget} placeholder="e.g. 100" keyboardType="numeric" />
 
                     <View style={styles.toggleRow}>
                         <View style={{ flex: 1 }}>

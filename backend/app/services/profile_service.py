@@ -22,6 +22,7 @@ async def upsert_profile(user_id: str, profile: ProfileUpsertRequest) -> dict:
         "activity_level": profile.activity_level,
         "goal": profile.goal,
         "has_apple_watch": profile.has_apple_watch,
+        "weekly_budget": profile.weekly_budget,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 

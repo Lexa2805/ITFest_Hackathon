@@ -18,6 +18,8 @@ import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-ca
 
 import { MacroBar } from '@/components/nutrition/MacroBar';
 import { PhotoMealCapture } from '@/components/nutrition/PhotoMealCapture';
+import { FlowEntryCard } from '@/components/recipe/FlowEntryCard';
+import { useRouter } from 'expo-router';
 import {
     BarcodeNutritionProduct,
     DailySummaryResponse,
@@ -90,6 +92,7 @@ function RecipeHeroCard({ meal, index, onPick }: { meal: PlannedMeal; index: num
 }
 
 export default function NutritionScreen() {
+    const router = useRouter();
     const user = useAuthStore((state) => state.user);
     const userId = user?.id ?? '';
 
@@ -374,6 +377,22 @@ export default function NutritionScreen() {
                             <Text style={styles.emptyText}>Generate a meal plan to see recipe cards.</Text>
                         </View>
                     ) : null}
+                </View>
+
+                <Text style={styles.sectionTitle}>Explore recipes</Text>
+                <View style={styles.flowEntrySection}>
+                    <FlowEntryCard
+                        icon="restaurant-outline"
+                        title="What can I cook tonight?"
+                        subtitle="Get suggestions matched to your fridge"
+                        onPress={() => router.push('/recipe-suggestions')}
+                    />
+                    <FlowEntryCard
+                        icon="calendar-outline"
+                        title="Plan my week"
+                        subtitle="Generate a 7-day meal plan"
+                        onPress={() => router.push('/weekly-plan')}
+                    />
                 </View>
 
                 <PhotoMealCapture
@@ -686,6 +705,9 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     recipeList: {
+        gap: 10,
+    },
+    flowEntrySection: {
         gap: 10,
     },
     recipeCardWrap: {
