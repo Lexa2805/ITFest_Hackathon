@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { theme } from '@/constants/theme';
 
 type MacroProgressRowProps = {
     label: string;
@@ -38,23 +39,23 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 13,
-        color: '#C8D1CC',
+        color: theme.colors.text.secondary,
         fontWeight: '600',
     },
     value: {
         fontSize: 12,
-        color: '#93A19A',
+        color: theme.colors.text.muted,
         fontWeight: '500',
     },
     track: {
         width: '100%',
         height: 8,
-        borderRadius: 99,
-        backgroundColor: '#1E1E1E',
+        borderRadius: theme.radius.full,
+        backgroundColor: theme.colors.background.elevated,
         overflow: 'hidden',
     },
     fill: {
         height: '100%',
-        borderRadius: 99,
+        borderRadius: theme.radius.full,
     },
 });

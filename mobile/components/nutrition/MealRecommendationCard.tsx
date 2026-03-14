@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { theme } from '@/constants/theme';
 
 type MealRecommendationCardProps = {
     mealType: string;
@@ -26,32 +27,25 @@ export function MealRecommendationCard({
 const styles = StyleSheet.create({
     card: {
         width: 170,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#1E1E1E',
+        borderRadius: theme.radius.lg,
         padding: 12,
-        backgroundColor: '#141414',
+        backgroundColor: theme.colors.background.secondary,
         gap: 6,
-        shadowColor: '#000000',
-        shadowOpacity: 0.2,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 10,
-        elevation: 1,
     },
     mealType: {
-        color: '#93A19A',
+        color: theme.colors.text.muted,
         fontSize: 11,
         fontWeight: '700',
         textTransform: 'uppercase',
         letterSpacing: 0.6,
     },
     title: {
-        color: '#F5F5F5',
+        color: theme.colors.text.primary,
         fontSize: 14,
         fontWeight: '700',
     },
     meta: {
-        color: '#C8D1CC',
+        color: theme.colors.text.secondary,
         fontSize: 12,
         fontWeight: '500',
     },

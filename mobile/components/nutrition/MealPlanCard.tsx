@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { PlannedMeal } from "@/services/nutritionApi";
+import { theme } from "@/constants/theme";
 
 interface MealPlanCardProps {
     mealType: string;
@@ -34,40 +35,36 @@ export function MealPlanCard({ mealType, meals }: MealPlanCardProps) {
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: "#141414",
-        borderWidth: 1,
-        borderColor: "#1E1E1E",
-        borderRadius: 14,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.sm,
         padding: 14,
         gap: 8,
     },
     title: {
-        color: "#00E676",
+        color: theme.colors.green.primary,
         fontSize: 15,
         fontWeight: "700",
         textTransform: "capitalize",
     },
     empty: {
-        color: "#93A19A",
+        color: theme.colors.text.muted,
         fontSize: 13,
     },
     mealBlock: {
         gap: 3,
         paddingBottom: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: "#1E1E1E",
     },
     mealName: {
-        color: "#F5F5F5",
+        color: theme.colors.text.primary,
         fontSize: 14,
         fontWeight: "600",
     },
     ingredient: {
-        color: "#C8D1CC",
+        color: theme.colors.text.secondary,
         fontSize: 12,
     },
     macros: {
-        color: "#93A19A",
+        color: theme.colors.text.muted,
         fontSize: 12,
         marginTop: 2,
     },

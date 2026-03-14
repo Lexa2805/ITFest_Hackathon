@@ -1,14 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-
-const C = {
-  card: '#141414',
-  border: '#1E1E1E',
-  title: '#F5F5F5',
-  muted: '#93A19A',
-  accent: '#00E676',
-  accentSoft: 'rgba(0,230,118,0.15)',
-} as const;
+import { theme } from '@/constants/theme';
 
 const LABELS: Record<string, string> = {
   checkin: 'Check-ins',
@@ -36,10 +28,8 @@ export function StreakBadge({ activityType, currentStreak }: Props) {
 const styles = StyleSheet.create({
   badge: {
     alignItems: 'center',
-    backgroundColor: C.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.border,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.radius.sm,
     paddingVertical: 10,
     paddingHorizontal: 14,
     minWidth: 90,
@@ -51,12 +41,12 @@ const styles = StyleSheet.create({
   count: {
     fontSize: 22,
     fontWeight: '800',
-    color: C.accent,
+    color: theme.colors.green.primary,
   },
   label: {
     fontSize: 11,
     fontWeight: '600',
-    color: C.muted,
+    color: theme.colors.text.muted,
     textAlign: 'center',
   },
 });

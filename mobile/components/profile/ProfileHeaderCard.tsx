@@ -1,15 +1,6 @@
 import React, { useMemo } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-
-const C = {
-    card: "#141414",
-    border: "#1E1E1E",
-    text: "#F5F5F5",
-    body: "#C8D1CC",
-    muted: "#93A19A",
-    accent: "#00E676",
-    accentSoft: "rgba(0,230,118,0.15)",
-} as const;
+import { theme } from "@/constants/theme";
 
 interface Props {
     name?: string | null;
@@ -35,7 +26,6 @@ export function ProfileHeaderCard({ name, email, completion, avatarUri, onPressA
     return (
         <View style={styles.card}>
             <View style={styles.row}>
-                {/* Tappable avatar for future image/avatar edit flow */}
                 <Pressable onPress={onPressAvatar} style={styles.avatar}>
                     {avatarUri ? (
                         <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
@@ -63,10 +53,8 @@ export function ProfileHeaderCard({ name, email, completion, avatarUri, onPressA
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: C.card,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: C.border,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.lg,
         padding: 14,
         gap: 12,
     },
@@ -79,14 +67,13 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderRadius: 28,
-        backgroundColor: C.accentSoft,
-        borderWidth: 1,
-        borderColor: C.accent,
+        backgroundColor: "rgba(57,255,136,0.12)",
         alignItems: "center",
         justifyContent: "center",
+        ...theme.glow.subtle,
     },
     avatarText: {
-        color: C.accent,
+        color: theme.colors.green.primary,
         fontWeight: "800",
         fontSize: 20,
     },
@@ -96,34 +83,35 @@ const styles = StyleSheet.create({
         borderRadius: 28,
     },
     name: {
-        color: C.text,
+        color: theme.colors.text.primary,
         fontSize: 18,
         fontWeight: "700",
     },
     email: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 13,
     },
     hint: {
-        color: C.muted,
+        color: theme.colors.text.muted,
         fontSize: 12,
     },
     progressRow: {
         gap: 6,
     },
     progressText: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 12,
         fontWeight: "600",
     },
     progressTrack: {
         height: 8,
         borderRadius: 8,
-        backgroundColor: "#0D2015",
+        backgroundColor: theme.colors.background.main,
         overflow: "hidden",
     },
     progressFill: {
         height: "100%",
-        backgroundColor: C.accent,
+        backgroundColor: theme.colors.green.primary,
+        borderRadius: 8,
     },
 });

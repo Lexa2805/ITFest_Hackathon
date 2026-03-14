@@ -7,16 +7,7 @@ import {
     TextInput,
     View,
 } from "react-native";
-
-const C = {
-    card: "#141414",
-    border: "#1E1E1E",
-    text: "#F5F5F5",
-    body: "#C8D1CC",
-    muted: "#93A19A",
-    accent: "#00E676",
-    input: "#111111",
-} as const;
+import { theme } from "@/constants/theme";
 
 interface Props {
     heartRate: string;
@@ -60,7 +51,7 @@ function NumberInput({
             <TextInput
                 value={value}
                 placeholder={placeholder}
-                placeholderTextColor={C.muted}
+                placeholderTextColor={theme.colors.text.muted}
                 keyboardType="numeric"
                 onChangeText={onChangeText}
                 style={styles.input}
@@ -109,7 +100,6 @@ export function ManualCheckinCard(props: Props) {
             <Text style={styles.title}>Daily Check-in</Text>
             <Text style={styles.subtitle}>Enter today&apos;s health metrics manually.</Text>
 
-            {/* Step 1: numeric biometrics */}
             <NumberInput
                 label="Heart rate (bpm)"
                 value={props.heartRate}
@@ -135,14 +125,12 @@ export function ManualCheckinCard(props: Props) {
                 onChangeText={props.onCaloriesChange}
             />
 
-            {/* Step 2: subjective scales */}
             <ScaleSelector label="Mood" value={props.mood} onChange={props.onMoodChange} useEmoji />
             <ScaleSelector label="Stress level" value={props.stress} onChange={props.onStressChange} />
 
-            {/* Step 3: submit daily check-in */}
             <Pressable style={styles.submitButton} onPress={props.onSubmit} disabled={props.submitting}>
                 {props.submitting ? (
-                    <ActivityIndicator size="small" color="#05361D" />
+                    <ActivityIndicator size="small" color={theme.colors.background.main} />
                 ) : (
                     <Text style={styles.submitText}>Submit today&apos;s data</Text>
                 )}
@@ -153,20 +141,18 @@ export function ManualCheckinCard(props: Props) {
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: C.card,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: C.border,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.lg,
         padding: 14,
         gap: 10,
     },
     title: {
-        color: C.text,
+        color: theme.colors.text.primary,
         fontSize: 18,
         fontWeight: "700",
     },
     subtitle: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 12,
         marginBottom: 4,
     },
@@ -174,16 +160,14 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     label: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 12,
         fontWeight: "600",
     },
     input: {
-        backgroundColor: C.input,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: C.border,
-        color: C.text,
+        backgroundColor: theme.colors.background.main,
+        borderRadius: theme.radius.sm,
+        color: theme.colors.text.primary,
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 14,
@@ -195,35 +179,33 @@ const styles = StyleSheet.create({
     selectorChip: {
         width: 40,
         height: 40,
-        borderRadius: 12,
-        backgroundColor: "#111111",
-        borderWidth: 1,
-        borderColor: C.border,
+        borderRadius: theme.radius.sm,
+        backgroundColor: theme.colors.background.main,
         alignItems: "center",
         justifyContent: "center",
     },
     selectorChipActive: {
-        borderColor: C.accent,
-        backgroundColor: "#0D2015",
+        backgroundColor: theme.colors.background.elevated,
+        ...theme.glow.subtle,
     },
     selectorText: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 15,
         fontWeight: "700",
     },
     selectorTextActive: {
-        color: C.accent,
+        color: theme.colors.green.primary,
     },
     submitButton: {
         marginTop: 4,
-        backgroundColor: C.accent,
-        borderRadius: 12,
+        backgroundColor: theme.colors.green.primary,
+        borderRadius: theme.radius.sm,
         alignItems: "center",
         justifyContent: "center",
         minHeight: 42,
     },
     submitText: {
-        color: "#05361D",
+        color: theme.colors.background.main,
         fontSize: 14,
         fontWeight: "800",
     },

@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ShoppingItem } from '@/services/recipeApi';
+import { theme } from '@/constants/theme';
 
 interface ShoppingCategoryProps {
   category: string;
@@ -22,15 +23,13 @@ export function ShoppingCategory({ category, items }: ShoppingCategoryProps) {
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Ionicons name={icon} size={18} color="#39FF88" />
+        <Ionicons name={icon} size={18} color={theme.colors.green.primary} />
         <Text style={styles.categoryName}>{category}</Text>
       </View>
       {items.map((item, i) => (
         <View key={i} style={styles.itemRow}>
           <Text style={styles.itemName}>{item.name}</Text>
-          <Text style={styles.itemQty}>
-            {item.quantity_needed} {item.unit}
-          </Text>
+          <Text style={styles.itemQty}>{item.quantity_needed} {item.unit}</Text>
         </View>
       ))}
     </View>
@@ -40,16 +39,16 @@ export function ShoppingCategory({ category, items }: ShoppingCategoryProps) {
 const styles = StyleSheet.create({
   section: { gap: 6, marginBottom: 16 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  categoryName: { color: '#F7F4EF', fontSize: 15, fontWeight: '700' },
+  categoryName: { color: theme.colors.text.primary, fontSize: 15, fontWeight: '700' },
   itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(247,244,239,0.06)',
+    borderBottomColor: theme.colors.ui.divider,
   },
-  itemName: { color: '#C8C1B6', fontSize: 14, flex: 1 },
-  itemQty: { color: '#39FF88', fontSize: 13, fontWeight: '600' },
+  itemName: { color: theme.colors.text.secondary, fontSize: 14, flex: 1 },
+  itemQty: { color: theme.colors.green.primary, fontSize: 13, fontWeight: '600' },
 });

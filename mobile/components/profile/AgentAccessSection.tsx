@@ -1,15 +1,8 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { theme } from "@/constants/theme";
 
-const C = {
-    card: "#141414",
-    border: "#1E1E1E",
-    text: "#F5F5F5",
-    body: "#C8D1CC",
-    muted: "#93A19A",
-    accent: "#00E676",
-    warning: "#FFD166",
-} as const;
+const WARNING_COLOR = "#FFD166";
 
 export interface AgentItem {
     key: string;
@@ -21,9 +14,10 @@ export interface AgentItem {
 
 function StatusBadge({ status }: { status: AgentItem["status"] }) {
     const active = status === "Active";
+    const color = active ? theme.colors.green.primary : WARNING_COLOR;
     return (
-        <View style={[styles.badge, { borderColor: active ? C.accent : C.warning }]}>
-            <Text style={[styles.badgeText, { color: active ? C.accent : C.warning }]}>{status}</Text>
+        <View style={[styles.badge, { borderColor: color }]}>
+            <Text style={[styles.badgeText, { color }]}>{status}</Text>
         </View>
     );
 }
@@ -59,12 +53,12 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     sectionTitle: {
-        color: C.text,
+        color: theme.colors.text.primary,
         fontSize: 20,
         fontWeight: "800",
     },
     sectionSubtitle: {
-        color: C.muted,
+        color: theme.colors.text.muted,
         fontSize: 12,
         marginBottom: 2,
     },
@@ -72,10 +66,8 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     card: {
-        backgroundColor: C.card,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: C.border,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.sm,
         padding: 12,
         gap: 7,
     },
@@ -86,19 +78,19 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     title: {
-        color: C.text,
+        color: theme.colors.text.primary,
         fontSize: 15,
         fontWeight: "700",
         flex: 1,
     },
     description: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 12,
         lineHeight: 18,
     },
     badge: {
         borderWidth: 1,
-        borderRadius: 999,
+        borderRadius: theme.radius.full,
         paddingHorizontal: 8,
         paddingVertical: 3,
     },

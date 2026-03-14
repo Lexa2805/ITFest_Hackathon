@@ -1,107 +1,91 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { BlurView } from 'expo-blur';
-
+import { LinearGradient } from 'expo-linear-gradient';
 import { useBriefingStore } from '@/stores/briefingStore';
-
-const C = {
-    border: 'rgba(247,244,239,0.14)',
-    glass: 'rgba(255,255,255,0.04)',
-    title: '#39FF88',
-    body: '#DED7CA',
-    skeleton: '#1A1A26',
-} as const;
+import { theme } from '@/constants/theme';
 
 function toMotivationalSummary(source?: string | null): string {
-    if (!source || source.trim().length === 0) {
-        return "You're building momentum today. Keep moving with one focused workout and stay hydrated.";
-    }
-
-    const normalized = source.replace(/\s+/g, ' ').replace(/[•\-*]+/g, ' ').trim();
-    const lower = normalized.toLowerCase();
-
-    if (lower.includes('recover') || lower.includes('sleep') || lower.includes('rest')) {
-        return "You're recovering well today. Your body is ready for light movement — keep it up.";
-    }
-
-    if (lower.includes('stress') || lower.includes('fatigue')) {
-        return 'Today is a reset day. Keep intensity light, breathe deep, and finish with a short walk.';
-    }
-
-    if (lower.includes('steps') || lower.includes('active') || lower.includes('energy')) {
-        return 'Your consistency is paying off. Add one quality session today and keep the streak alive.';
-    }
-
-    const firstSentence = normalized.split(/[.!?]+/)[0]?.trim();
-    if (firstSentence && firstSentence.length >= 18) {
-        const clipped = firstSentence.slice(0, 130).trim();
-        return clipped.endsWith('.') ? clipped : `${clipped}.`;
-    }
-
-    return "You're on track today. Stay consistent with smart movement and strong recovery habits.";
+  if (!source || source.trim().length === 0) {
+    return "You're building momentum today. Keep moving with one focused workout and stay hydrated.";
+  }
+  const normalized = source.replace(/\s+/g, ' ').replace(/[•\-*]+/g, ' ').trim();
+  const lower = normalized.toLowerCase();
+  if (lower.includes('recover') || lower.includes('sleep') || lower.includes('rest')) {
+    return "You're recovering well today. Your body is ready for light movement — keep it up.";
+  }
+  if (lower.includes('stress') || lower.includes('fatigue')) {
+    return 'Today is a reset day. Keep intensity light, breathe deep, and finish with a short walk.';
+  }
+  if (lower.includes('steps') || lower.includes('active') || lower.includes('energy')) {
+    return 'Your consistency is paying off. Add one quality session today and keep the streak alive.';
+  }
+  const firstSentence = normalized.split(/[.!?]+/)[0]?.trim();
+  if (firstSentence && firstSentence.length >= 18) {
+    const clipped = firstSentence.slice(0, 130).trim();
+    return clipped.endsWith('.') ? clipped : `${clipped}.`;
+  }
+  return "You're on track today. Stay consistent with smart movement and strong recovery habits.";
 }
 
 export function DailyBriefingCard() {
-    const { briefing, loading, error, fetchBriefing } = useBriefingStore();
+  const { briefing, loading, error, fetchBriefing } = useBriefingStore();
 
-    useEffect(() => {
-        fetchBriefing();
-    }, []);
+  useEffect(() => {
+    fetchBriefing();
+  }, []);
 
-    if (loading) {
-        return (
-            <View style={styles.card}>
-                <Text style={styles.label}>AI Summary</Text>
-                <View style={styles.skeletonLine} />
-                <View style={[styles.skeletonLine, { width: '80%' }]} />
-            </View>
-        );
-    }
-
-    const narrative = toMotivationalSummary(error ?? briefing?.narrative);
-
+  if (loading) {
     return (
-        <View style={styles.card}>
-            <BlurView intensity={22} tint="dark" style={styles.blur}>
-                <Text style={styles.label}>AI Summary</Text>
-                <Text style={styles.narrative} numberOfLines={3}>
-                    “{narrative}”
-                </Text>
-            </BlurView>
-        </View>
+      <View style={styles.card}>
+        <Text style={styles.label}>AI SUMMARY</Text>
+        <View style={styles.skeletonLine} />
+        <View style={[styles.skeletonLine, { width: '80%' }]} />
+      </View>
     );
+  }
+
+  const narrative = toMotivationalSummary(error ?? briefing?.narrative);
+
+  return (
+    <View style={styles.card}>
+      <LinearGradient
+        colors={['rgba(57,255,136,0.04)', 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <Text style={styles.label}>AI SUMMARY</Text>
+      <Text style={styles.narrative} numberOfLines={3}>
+        "{narrative}"
+      </Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    card: {
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: C.border,
-        overflow: 'hidden',
-        backgroundColor: C.glass,
-    },
-    blur: {
-        padding: 16,
-        gap: 8,
-    },
-    label: {
-        color: C.title,
-        fontSize: 12,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    narrative: {
-        color: C.body,
-        fontSize: 15,
-        lineHeight: 22,
-        fontWeight: '400',
-        fontStyle: 'italic',
-    },
-    skeletonLine: {
-        height: 14,
-        borderRadius: 6,
-        backgroundColor: C.skeleton,
-        width: '100%',
-    },
+  card: {
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.background.secondary,
+    padding: 18,
+    gap: 8,
+    overflow: 'hidden',
+  },
+  label: {
+    color: theme.colors.green.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  narrative: {
+    color: theme.colors.text.secondary,
+    fontSize: 15,
+    lineHeight: 22,
+    fontStyle: 'italic',
+  },
+  skeletonLine: {
+    height: 14,
+    borderRadius: 6,
+    backgroundColor: 'rgba(57,255,136,0.04)',
+    width: '100%',
+  },
 });

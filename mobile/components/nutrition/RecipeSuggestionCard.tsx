@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { theme } from '@/constants/theme';
 
 type RecipeSuggestionCardProps = {
     name: string;
@@ -39,11 +40,9 @@ export function RecipeSuggestionCard({
 
 const styles = StyleSheet.create({
     card: {
-        borderWidth: 1,
-        borderColor: '#1E1E1E',
-        borderRadius: 16,
+        borderRadius: theme.radius.lg,
         padding: 14,
-        backgroundColor: '#141414',
+        backgroundColor: theme.colors.background.secondary,
         gap: 8,
     },
     topRow: {
@@ -54,41 +53,41 @@ const styles = StyleSheet.create({
     },
     name: {
         flex: 1,
-        color: '#F5F5F5',
+        color: theme.colors.text.primary,
         fontSize: 15,
         fontWeight: '700',
     },
     tagPill: {
-        backgroundColor: 'rgba(0,230,118,0.15)',
-        borderRadius: 999,
+        backgroundColor: 'rgba(57,255,136,0.12)',
+        borderRadius: theme.radius.full,
         paddingHorizontal: 10,
         paddingVertical: 5,
     },
     tagText: {
         fontSize: 11,
-        color: '#00E676',
+        color: theme.colors.green.primary,
         fontWeight: '700',
     },
     meta: {
-        color: '#93A19A',
+        color: theme.colors.text.muted,
         fontSize: 12,
         fontWeight: '600',
     },
     description: {
-        color: '#C8D1CC',
+        color: theme.colors.text.secondary,
         fontSize: 13,
         lineHeight: 19,
     },
     ctaButton: {
         marginTop: 4,
         alignSelf: 'flex-start',
-        borderRadius: 12,
-        backgroundColor: 'rgba(0,230,118,0.15)',
+        borderRadius: theme.radius.sm,
+        backgroundColor: 'rgba(57,255,136,0.12)',
         paddingHorizontal: 12,
         paddingVertical: 8,
     },
     ctaText: {
-        color: '#00E676',
+        color: theme.colors.green.primary,
         fontSize: 12,
         fontWeight: '700',
     },

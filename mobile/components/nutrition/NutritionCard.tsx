@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { theme } from '@/constants/theme';
 
 type NutritionCardProps = {
     title?: string;
@@ -19,26 +20,19 @@ export function NutritionCard({ title, subtitle, children }: NutritionCardProps)
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: '#141414',
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: '#1E1E1E',
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.md,
         padding: 16,
-        shadowColor: '#000000',
-        shadowOpacity: 0.2,
-        shadowOffset: { width: 0, height: 6 },
-        shadowRadius: 14,
-        elevation: 2,
     },
     title: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#F5F5F5',
+        color: theme.colors.text.primary,
     },
     subtitle: {
         marginTop: 2,
         fontSize: 13,
-        color: '#93A19A',
+        color: theme.colors.text.muted,
     },
     content: {
         marginTop: 12,

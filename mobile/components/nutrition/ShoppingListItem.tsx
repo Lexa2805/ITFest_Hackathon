@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { theme } from '@/constants/theme';
 
 type ShoppingListItemProps = {
     name: string;
@@ -24,10 +25,8 @@ export function ShoppingListItem({ name, amount, group }: ShoppingListItemProps)
 
 const styles = StyleSheet.create({
     row: {
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#1E1E1E',
-        backgroundColor: '#141414',
+        borderRadius: theme.radius.sm,
+        backgroundColor: theme.colors.background.secondary,
         paddingHorizontal: 12,
         paddingVertical: 10,
         flexDirection: 'row',
@@ -44,24 +43,24 @@ const styles = StyleSheet.create({
     checkCircle: {
         width: 18,
         height: 18,
-        borderRadius: 99,
+        borderRadius: theme.radius.full,
         borderWidth: 1.5,
-        borderColor: '#2F3C36',
-        backgroundColor: '#0F1712',
+        borderColor: theme.colors.ui.divider,
+        backgroundColor: theme.colors.background.main,
     },
     name: {
-        color: '#F5F5F5',
+        color: theme.colors.text.primary,
         fontSize: 14,
         fontWeight: '600',
     },
     group: {
         marginTop: 1,
-        color: '#93A19A',
+        color: theme.colors.text.muted,
         fontSize: 11,
         fontWeight: '500',
     },
     amount: {
-        color: '#C8D1CC',
+        color: theme.colors.text.secondary,
         fontSize: 12,
         fontWeight: '600',
     },

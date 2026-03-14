@@ -9,18 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useLifeScoreStore } from '@/stores/lifeScoreStore';
-
-const C = {
-  background: '#0A0A0A',
-  card: '#141414',
-  border: '#1E1E1E',
-  accent: '#00E676',
-  accentSoft: 'rgba(0,230,118,0.15)',
-  title: '#F5F5F5',
-  body: '#C8D1CC',
-  muted: '#93A19A',
-  error: '#FF6B6B',
-} as const;
+import { theme } from '@/constants/theme';
 
 interface Props {
   visible: boolean;
@@ -121,7 +110,7 @@ export function LifeScoreDetailModal({ visible, onClose }: Props) {
             accessibilityLabel={lifeScore ? 'Recalculate Life Score' : 'Generate Life Score'}
           >
             {isLoading ? (
-              <ActivityIndicator color={C.background} size="small" />
+              <ActivityIndicator color={theme.colors.background.main} size="small" />
             ) : (
               <Text style={styles.recalcButtonText}>
                 {lifeScore ? 'Recalculate' : 'Generate Life Score'}
@@ -143,7 +132,7 @@ export function LifeScoreDetailModal({ visible, onClose }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.background,
+    backgroundColor: theme.colors.background.main,
   },
   header: {
     flexDirection: 'row',
@@ -152,16 +141,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
   },
   headerTitle: {
-    color: C.title,
+    color: theme.colors.text.primary,
     fontSize: 18,
     fontWeight: '700',
   },
   closeButton: {
-    color: C.accent,
+    color: theme.colors.green.primary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -175,20 +162,19 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    borderWidth: 3,
-    borderColor: C.accent,
-    backgroundColor: C.accentSoft,
+    backgroundColor: 'rgba(57,255,136,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
+    ...theme.glow.primary,
   },
   gradeText: {
-    color: C.accent,
+    color: theme.colors.green.primary,
     fontSize: 40,
     fontWeight: '800',
   },
   date: {
-    color: C.muted,
+    color: theme.colors.text.muted,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -197,14 +183,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: {
-    color: C.accent,
+    color: theme.colors.green.primary,
     fontSize: 13,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   bodyText: {
-    color: C.body,
+    color: theme.colors.text.secondary,
     fontSize: 15,
     lineHeight: 22,
     flex: 1,
@@ -215,12 +201,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   bulletAccent: {
-    color: C.accent,
+    color: theme.colors.green.primary,
     fontSize: 14,
     marginTop: 3,
   },
   bulletMuted: {
-    color: C.muted,
+    color: theme.colors.text.muted,
     fontSize: 14,
     marginTop: 3,
   },
@@ -230,32 +216,32 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
   emptyTitle: {
-    color: C.title,
+    color: theme.colors.text.primary,
     fontSize: 18,
     fontWeight: '700',
   },
   emptyBody: {
-    color: C.muted,
+    color: theme.colors.text.muted,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
   },
   errorBanner: {
     width: '100%',
-    backgroundColor: 'rgba(255,107,107,0.12)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,82,82,0.12)',
+    borderRadius: theme.radius.sm,
     padding: 12,
   },
   errorText: {
-    color: C.error,
+    color: theme.colors.error,
     fontSize: 13,
     fontWeight: '500',
     textAlign: 'center',
   },
   recalcButton: {
     width: '100%',
-    backgroundColor: C.accent,
-    borderRadius: 14,
+    backgroundColor: theme.colors.green.primary,
+    borderRadius: theme.radius.sm,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -263,12 +249,12 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   recalcButtonText: {
-    color: C.background,
+    color: theme.colors.background.main,
     fontSize: 16,
     fontWeight: '700',
   },
   rateLimitHint: {
-    color: C.muted,
+    color: theme.colors.text.muted,
     fontSize: 12,
     textAlign: 'center',
     fontWeight: '500',

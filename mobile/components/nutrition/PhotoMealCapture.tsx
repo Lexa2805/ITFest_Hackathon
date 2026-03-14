@@ -16,24 +16,10 @@ import {
   type PhotoMealEstimate,
   type PhotoMealConfirmRequest,
 } from '@/services/photoMealApi';
-
-const C = {
-  background: '#0A0A0A',
-  card: '#141414',
-  border: '#1E1E1E',
-  title: '#F5F5F5',
-  body: '#C8D1CC',
-  muted: '#93A19A',
-  accent: '#00E676',
-  accentSoft: 'rgba(0,230,118,0.15)',
-  alert: '#FF6B6B',
-} as const;
+import { theme } from '@/constants/theme';
 
 type TimeOfDay = 'breakfast' | 'lunch' | 'dinner' | 'snack';
-
-type Props = {
-  onComplete?: () => void;
-};
+type Props = { onComplete?: () => void };
 
 export function PhotoMealCapture({ onComplete }: Props) {
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -52,33 +38,17 @@ export function PhotoMealCapture({ onComplete }: Props) {
 
   const handleCapture = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission needed', 'Camera access is required to capture meal photos.');
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-
+    if (!permission.granted) { Alert.alert('Permission needed', 'Camera access is required to capture meal photos.'); return; }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 });
     if (result.canceled || !result.assets?.[0]) return;
-
     const uri = result.assets[0].uri;
-    setImageUri(uri);
-    setEstimate(null);
-    setError(null);
-    setAnalyzing(true);
-
+    setImageUri(uri); setEstimate(null); setError(null); setAnalyzing(true);
     try {
       const est = await analyzePhoto(uri);
       setEstimate(est);
       setMealName(est.food_items.map((f) => f.name).join(', '));
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to analyze photo.');
-    } finally {
-      setAnalyzing(false);
-    }
+    } catch (err: any) { setError(err?.response?.data?.detail || err?.message || 'Failed to analyze photo.'); }
+    finally { setAnalyzing(false); }
   };
 
   const handleConfirm = async () => {
@@ -86,43 +56,22 @@ export function PhotoMealCapture({ onComplete }: Props) {
     setConfirming(true);
     try {
       const req: PhotoMealConfirmRequest = {
-        meal_name: mealName || 'Meal',
-        food_items: estimate.food_items,
-        total_calories: estimate.total_calories,
-        total_protein_g: estimate.total_protein_g,
-        total_carbs_g: estimate.total_carbs_g,
-        total_fat_g: estimate.total_fat_g,
-        time_of_day: timeOfDay,
+        meal_name: mealName || 'Meal', food_items: estimate.food_items,
+        total_calories: estimate.total_calories, total_protein_g: estimate.total_protein_g,
+        total_carbs_g: estimate.total_carbs_g, total_fat_g: estimate.total_fat_g, time_of_day: timeOfDay,
       };
       await confirmMeal(req);
       Alert.alert('Logged', 'Meal has been saved.');
-      setImageUri(null);
-      setEstimate(null);
-      setMealName('');
-      onComplete?.();
-    } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to save meal.');
-    } finally {
-      setConfirming(false);
-    }
+      setImageUri(null); setEstimate(null); setMealName(''); onComplete?.();
+    } catch (err: any) { Alert.alert('Error', err?.message || 'Failed to save meal.'); }
+    finally { setConfirming(false); }
   };
 
-  const handleReset = () => {
-    setImageUri(null);
-    setEstimate(null);
-    setError(null);
-    setMealName('');
-  };
+  const handleReset = () => { setImageUri(null); setEstimate(null); setError(null); setMealName(''); };
 
-  // No photo captured yet — show capture button
   if (!imageUri) {
     return (
-      <TouchableOpacity
-        style={styles.captureBtn}
-        onPress={handleCapture}
-        accessibilityRole="button"
-        accessibilityLabel="Take a photo of your meal"
-      >
+      <TouchableOpacity style={styles.captureBtn} onPress={handleCapture} accessibilityRole="button" accessibilityLabel="Take a photo of your meal">
         <Text style={styles.captureBtnIcon}>📸</Text>
         <Text style={styles.captureBtnText}>Snap a Meal Photo</Text>
       </TouchableOpacity>
@@ -135,7 +84,7 @@ export function PhotoMealCapture({ onComplete }: Props) {
 
       {analyzing && (
         <View style={styles.loadingRow}>
-          <ActivityIndicator color={C.accent} size="small" />
+          <ActivityIndicator color={theme.colors.green.primary} size="small" />
           <Text style={styles.loadingText}>Analyzing your meal…</Text>
         </View>
       )}
@@ -158,26 +107,12 @@ export function PhotoMealCapture({ onComplete }: Props) {
             <MacroPill label="F" value={estimate.total_fat_g} unit="g" />
           </View>
 
-          <TextInput
-            style={styles.nameInput}
-            value={mealName}
-            onChangeText={setMealName}
-            placeholder="Meal name"
-            placeholderTextColor={C.muted}
-          />
+          <TextInput style={styles.nameInput} value={mealName} onChangeText={setMealName} placeholder="Meal name" placeholderTextColor={theme.colors.text.muted} />
 
           <View style={styles.timeRow}>
             {(['breakfast', 'lunch', 'dinner', 'snack'] as TimeOfDay[]).map((t) => (
-              <TouchableOpacity
-                key={t}
-                style={[styles.timeChip, timeOfDay === t && styles.timeChipActive]}
-                onPress={() => setTimeOfDay(t)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: timeOfDay === t }}
-              >
-                <Text style={[styles.timeChipText, timeOfDay === t && styles.timeChipTextActive]}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </Text>
+              <TouchableOpacity key={t} style={[styles.timeChip, timeOfDay === t && styles.timeChipActive]} onPress={() => setTimeOfDay(t)} accessibilityRole="button" accessibilityState={{ selected: timeOfDay === t }}>
+                <Text style={[styles.timeChipText, timeOfDay === t && styles.timeChipTextActive]}>{t.charAt(0).toUpperCase() + t.slice(1)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -186,17 +121,8 @@ export function PhotoMealCapture({ onComplete }: Props) {
             <TouchableOpacity style={styles.cancelBtn} onPress={handleReset} accessibilityRole="button">
               <Text style={styles.cancelBtnText}>Retake</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.confirmBtn}
-              onPress={handleConfirm}
-              disabled={confirming}
-              accessibilityRole="button"
-            >
-              {confirming ? (
-                <ActivityIndicator color="#0A0A0A" size="small" />
-              ) : (
-                <Text style={styles.confirmBtnText}>Log Meal</Text>
-              )}
+            <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm} disabled={confirming} accessibilityRole="button">
+              {confirming ? <ActivityIndicator color={theme.colors.background.main} size="small" /> : <Text style={styles.confirmBtnText}>Log Meal</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -208,101 +134,48 @@ export function PhotoMealCapture({ onComplete }: Props) {
 function MacroPill({ label, value, unit }: { label: string; value: number; unit?: string }) {
   return (
     <View style={pillStyles.pill}>
-      <Text style={pillStyles.value}>
-        {value}
-        {unit ?? ''}
-      </Text>
+      <Text style={pillStyles.value}>{value}{unit ?? ''}</Text>
       <Text style={pillStyles.label}>{label}</Text>
     </View>
   );
 }
 
 const pillStyles = StyleSheet.create({
-  pill: {
-    alignItems: 'center',
-    backgroundColor: C.accentSoft,
-    borderRadius: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    minWidth: 60,
-  },
-  value: { fontSize: 16, fontWeight: '800', color: C.accent },
-  label: { fontSize: 10, fontWeight: '600', color: C.muted },
+  pill: { alignItems: 'center', backgroundColor: 'rgba(57,255,136,0.1)', borderRadius: theme.radius.sm, paddingVertical: 6, paddingHorizontal: 12, minWidth: 60 },
+  value: { fontSize: 16, fontWeight: '800', color: theme.colors.green.primary },
+  label: { fontSize: 10, fontWeight: '600', color: theme.colors.text.muted },
 });
 
 const styles = StyleSheet.create({
   captureBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: C.accentSoft,
-    borderRadius: 14,
-    paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: 'rgba(57,255,136,0.1)', borderRadius: theme.radius.lg, paddingVertical: 14,
   },
   captureBtnIcon: { fontSize: 20 },
-  captureBtnText: { fontSize: 15, fontWeight: '700', color: C.accent },
+  captureBtnText: { fontSize: 15, fontWeight: '700', color: theme.colors.green.primary },
   card: {
-    backgroundColor: C.card,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: C.border,
-    overflow: 'hidden',
-    gap: 12,
+    backgroundColor: theme.colors.background.secondary, borderRadius: theme.radius.lg,
+    overflow: 'hidden', gap: 12,
   },
-  preview: {
-    width: '100%',
-    height: 200,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  loadingText: { fontSize: 14, color: C.body },
-  errorText: { fontSize: 14, color: C.alert, paddingHorizontal: 16 },
-  retryText: { fontSize: 14, fontWeight: '600', color: C.accent, paddingHorizontal: 16, paddingBottom: 16 },
+  preview: { width: '100%', height: 200, borderTopLeftRadius: theme.radius.lg, borderTopRightRadius: theme.radius.lg },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 16 },
+  loadingText: { fontSize: 14, color: theme.colors.text.secondary },
+  errorText: { fontSize: 14, color: theme.colors.error, paddingHorizontal: 16 },
+  retryText: { fontSize: 14, fontWeight: '600', color: theme.colors.green.primary, paddingHorizontal: 16, paddingBottom: 16 },
   results: { paddingHorizontal: 16, paddingBottom: 16, gap: 12 },
   macroRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
   nameInput: {
-    backgroundColor: C.background,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: C.title,
-    fontSize: 14,
+    backgroundColor: theme.colors.background.main, borderRadius: theme.radius.sm,
+    paddingHorizontal: 14, paddingVertical: 12, color: theme.colors.text.primary, fontSize: 14,
   },
   timeRow: { flexDirection: 'row', gap: 6 },
-  timeChip: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: C.background,
-  },
-  timeChipActive: { backgroundColor: C.accentSoft },
-  timeChipText: { fontSize: 12, fontWeight: '600', color: C.muted },
-  timeChipTextActive: { color: C.accent },
+  timeChip: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: theme.radius.sm, backgroundColor: theme.colors.background.main },
+  timeChipActive: { backgroundColor: 'rgba(57,255,136,0.12)' },
+  timeChipText: { fontSize: 12, fontWeight: '600', color: theme.colors.text.muted },
+  timeChipTextActive: { color: theme.colors.green.primary },
   actionRow: { flexDirection: 'row', gap: 10 },
-  cancelBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: C.muted },
-  confirmBtn: {
-    flex: 2,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: C.accent,
-  },
-  confirmBtnText: { fontSize: 14, fontWeight: '700', color: C.background },
+  cancelBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: theme.radius.sm, borderWidth: 1, borderColor: theme.colors.ui.divider },
+  cancelBtnText: { fontSize: 14, fontWeight: '600', color: theme.colors.text.muted },
+  confirmBtn: { flex: 2, alignItems: 'center', paddingVertical: 12, borderRadius: theme.radius.sm, backgroundColor: theme.colors.green.primary },
+  confirmBtnText: { fontSize: 14, fontWeight: '700', color: theme.colors.background.main },
 });

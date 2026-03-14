@@ -1,10 +1,14 @@
+/**
+ * ProfileScreen — cyber-wellness aesthetic with neon-green accents,
+ * spacing-driven layout, and animated transitions.
+ */
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     Animated,
     Image,
     Pressable,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Switch,
@@ -12,6 +16,7 @@ import {
     TextInput,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as SecureStore from 'expo-secure-store';
@@ -25,39 +30,22 @@ import {
     type HealthGoal,
 } from '@/services/profileApi';
 import { type AgentItem } from '@/components/profile/AgentAccessSection';
-
-const C = {
-    bg: '#0D0D14',
-    text: '#F7F4EF',
-    body: '#C8C1B6',
-    muted: '#8F8779',
-    amber: '#39FF88',
-    border: 'rgba(247,244,239,0.14)',
-    card: '#13121C',
-} as const;
+import { theme } from '@/constants/theme';
+import { NeonButton } from '@/components/ui/NeonButton';
 
 const activityOptions: ActivityLevel[] = ['sedentary', 'lightly active', 'moderately active', 'very active'];
 const goalOptions: HealthGoal[] = ['lose weight', 'maintain', 'build muscle', 'improve endurance'];
 const genderOptions: Gender[] = ['male', 'female', 'non-binary', 'prefer not to say', 'other'];
 
-function toLbs(kg: number): number {
-    return kg * 2.20462;
-}
-
-function toKg(lbs: number): number {
-    return lbs / 2.20462;
-}
-
+function toLbs(kg: number): number { return kg * 2.20462; }
+function toKg(lbs: number): number { return lbs / 2.20462; }
 function cmToFeetInches(cm: number): { feet: number; inches: number } {
     const totalInches = cm / 2.54;
     const feet = Math.floor(totalInches / 12);
     const inches = Math.round(totalInches - feet * 12);
     return { feet, inches };
 }
-
-function feetInchesToCm(feet: number, inches: number): number {
-    return feet * 30.48 + inches * 2.54;
-}
+function feetInchesToCm(feet: number, inches: number): number { return feet * 30.48 + inches * 2.54; }
 
 function getApiErrorMessage(error: any, fallback: string): string {
     const detail = error?.response?.data?.detail;
@@ -75,30 +63,13 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
     );
 }
 
-function Field({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    keyboardType,
-}: {
-    label: string;
-    value: string;
-    onChangeText: (value: string) => void;
-    placeholder: string;
-    keyboardType?: 'default' | 'numeric';
+function Field({ label, value, onChangeText, placeholder, keyboardType }: {
+    label: string; value: string; onChangeText: (value: string) => void; placeholder: string; keyboardType?: 'default' | 'numeric';
 }) {
     return (
         <View style={styles.field}>
             <Text style={styles.label}>{label}</Text>
-            <TextInput
-                style={styles.input}
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={placeholder}
-                placeholderTextColor={C.muted}
-                keyboardType={keyboardType}
-            />
+            <TextInput style={styles.input} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={theme.colors.text.muted} keyboardType={keyboardType} />
         </View>
     );
 }
@@ -114,15 +85,7 @@ export default function ProfileScreen() {
     const loadHealthData = useHealthStore((state) => state.loadHealthData);
     const isHealthInitialized = useHealthStore((state) => state.isInitialized);
 
-    const {
-        profile,
-        isLoading,
-        isSaving,
-        profileCompletion,
-        todayCheckinSubmitted,
-        updateProfile,
-        submitTodayCheckin,
-    } = useProfileContext();
+    const { profile, isLoading, isSaving, profileCompletion, todayCheckinSubmitted, updateProfile, submitTodayCheckin } = useProfileContext();
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -153,7 +116,6 @@ export default function ProfileScreen() {
 
     useEffect(() => {
         if (!profile) return;
-
         setName(profile.name ?? '');
         setEmail(profile.email ?? user?.email ?? '');
         setAge(profile.age ? String(profile.age) : '');
@@ -162,55 +124,31 @@ export default function ProfileScreen() {
         setGoal((profile.goal as HealthGoal | null) ?? null);
         setHasAppleWatch(profile.has_apple_watch);
         setWeeklyBudget(typeof profile.weekly_budget === 'number' ? String(profile.weekly_budget) : '');
-
         if (typeof profile.weight === 'number') {
             setWeight(weightUnit === 'kg' ? profile.weight.toFixed(1) : toLbs(profile.weight).toFixed(1));
-        } else {
-            setWeight('');
-        }
-
+        } else { setWeight(''); }
         if (typeof profile.height === 'number') {
             setHeightCm(profile.height.toFixed(1));
             const converted = cmToFeetInches(profile.height);
             setHeightFeet(String(converted.feet));
             setHeightInches(String(converted.inches));
-        } else {
-            setHeightCm('');
-            setHeightFeet('');
-            setHeightInches('');
-        }
+        } else { setHeightCm(''); setHeightFeet(''); setHeightInches(''); }
     }, [profile, user?.email, weightUnit]);
 
-    useEffect(() => {
-        if (hasAppleWatch && !isHealthInitialized) {
-            void loadHealthData();
-        }
-    }, [hasAppleWatch, isHealthInitialized, loadHealthData]);
+    useEffect(() => { if (hasAppleWatch && !isHealthInitialized) void loadHealthData(); }, [hasAppleWatch, isHealthInitialized, loadHealthData]);
 
     useEffect(() => {
         let mounted = true;
         const loadAvatar = async () => {
-            try {
-                const stored = await SecureStore.getItemAsync(avatarStorageKey);
-                if (mounted) setAvatarUri(stored ?? null);
-            } catch {
-                if (mounted) setAvatarUri(null);
-            }
+            try { const stored = await SecureStore.getItemAsync(avatarStorageKey); if (mounted) setAvatarUri(stored ?? null); }
+            catch { if (mounted) setAvatarUri(null); }
         };
-
         loadAvatar();
-
-        return () => {
-            mounted = false;
-        };
+        return () => { mounted = false; };
     }, [avatarStorageKey]);
 
     useEffect(() => {
-        Animated.timing(manualAnim, {
-            toValue: hasAppleWatch ? 0 : 1,
-            duration: 220,
-            useNativeDriver: false,
-        }).start();
+        Animated.timing(manualAnim, { toValue: hasAppleWatch ? 0 : 1, duration: 220, useNativeDriver: false }).start();
     }, [hasAppleWatch, manualAnim]);
 
     const manualAnimatedStyle = {
@@ -223,9 +161,7 @@ export default function ProfileScreen() {
     const saveProfileHandler = async () => {
         const parsedWeight = parseFloat(weight);
         const parsedAge = parseInt(age, 10);
-
         const weightKg = Number.isFinite(parsedWeight) ? (weightUnit === 'kg' ? parsedWeight : toKg(parsedWeight)) : null;
-
         let heightValueCm: number | null = null;
         if (heightUnit === 'cm') {
             const parsedCm = parseFloat(heightCm);
@@ -233,63 +169,34 @@ export default function ProfileScreen() {
         } else {
             const ft = parseFloat(heightFeet);
             const inch = parseFloat(heightInches);
-            if (Number.isFinite(ft) || Number.isFinite(inch)) {
-                heightValueCm = feetInchesToCm(Number.isFinite(ft) ? ft : 0, Number.isFinite(inch) ? inch : 0);
-            }
+            if (Number.isFinite(ft) || Number.isFinite(inch)) heightValueCm = feetInchesToCm(Number.isFinite(ft) ? ft : 0, Number.isFinite(inch) ? inch : 0);
         }
-
         try {
             await updateProfile({
-                name: name.trim() || null,
-                email: email.trim() || user?.email || null,
-                weight: weightKg,
-                height: heightValueCm,
-                age: Number.isFinite(parsedAge) ? parsedAge : null,
-                gender,
-                activity_level: activityLevel,
-                goal,
-                has_apple_watch: hasAppleWatch,
+                name: name.trim() || null, email: email.trim() || user?.email || null,
+                weight: weightKg, height: heightValueCm, age: Number.isFinite(parsedAge) ? parsedAge : null,
+                gender, activity_level: activityLevel, goal, has_apple_watch: hasAppleWatch,
                 weekly_budget: weeklyBudget.trim() ? parseFloat(weeklyBudget) || null : null,
             });
             Alert.alert('Saved', 'Your profile has been updated.');
-        } catch (error: any) {
-            Alert.alert('Save failed', getApiErrorMessage(error, 'Could not save your profile.'));
-        }
+        } catch (error: any) { Alert.alert('Save failed', getApiErrorMessage(error, 'Could not save your profile.')); }
     };
 
     const submitManualDataHandler = async () => {
-        const hr = parseFloat(heartRate);
-        const sleep = parseFloat(sleepHours);
-        const stepCount = parseInt(steps, 10);
-        const parsedCalories = calories.trim() ? parseFloat(calories) : undefined;
-
+        const hr = parseFloat(heartRate); const sleep = parseFloat(sleepHours);
+        const stepCount = parseInt(steps, 10); const parsedCalories = calories.trim() ? parseFloat(calories) : undefined;
         if (!Number.isFinite(hr) || !Number.isFinite(sleep) || !Number.isFinite(stepCount)) {
-            Alert.alert('Missing fields', 'Please enter heart rate, sleep hours, and steps.');
-            return;
+            Alert.alert('Missing fields', 'Please enter heart rate, sleep hours, and steps.'); return;
         }
-
         if (parsedCalories !== undefined && !Number.isFinite(parsedCalories)) {
-            Alert.alert('Invalid calories', 'Please enter a valid calories value or leave it empty.');
-            return;
+            Alert.alert('Invalid calories', 'Please enter a valid calories value or leave it empty.'); return;
         }
-
         try {
             setSubmittingCheckin(true);
-            const response = await submitTodayCheckin({
-                heart_rate: hr,
-                sleep_hours: sleep,
-                steps: stepCount,
-                calories: parsedCalories,
-                mood,
-                stress_level: stress,
-            });
-
+            const response = await submitTodayCheckin({ heart_rate: hr, sleep_hours: sleep, steps: stepCount, calories: parsedCalories, mood, stress_level: stress });
             Alert.alert('Check-in submitted', `Physical state score: ${response.physical_state_score}/100`);
-        } catch (error: any) {
-            Alert.alert('Submission failed', getApiErrorMessage(error, 'Could not submit daily data.'));
-        } finally {
-            setSubmittingCheckin(false);
-        }
+        } catch (error: any) { Alert.alert('Submission failed', getApiErrorMessage(error, 'Could not submit daily data.')); }
+        finally { setSubmittingCheckin(false); }
     };
 
     const agentItems = useMemo<AgentItem[]>(() => {
@@ -297,93 +204,35 @@ export default function ProfileScreen() {
         const manualActive = !hasAppleWatch && todayCheckinSubmitted;
         const watchActive = hasAppleWatch && Boolean(healthData);
         const isActiveForState = manualActive || watchActive;
-
         const base: AgentItem[] = [
-            {
-                key: 'nutrition',
-                title: 'Nutrition Agent',
-                description: 'Open nutrition recommendations aligned with your profile and activity.',
-                status: hasGoalConfig ? 'Active' : 'Not configured',
-                onPress: () => router.push('/(tabs)/nutrition'),
-            },
-            {
-                key: 'mood',
-                title: 'Mood Agent',
-                description: 'View mood analysis and stress-recovery tips based on your check-ins.',
-                status: isActiveForState ? 'Active' : 'Not configured',
-                onPress: () => Alert.alert('Mood Agent', 'Mood analysis screen can be connected next.'),
-            },
-            {
-                key: 'fitness',
-                title: 'Fitness Agent',
-                description: 'Get workout recommendations from your physical state and activity data.',
-                status: isActiveForState ? 'Active' : 'Not configured',
-                onPress: () => Alert.alert('Fitness Agent', 'Workout recommendations screen can be connected next.'),
-            },
+            { key: 'nutrition', title: 'Nutrition Agent', description: 'Open nutrition recommendations aligned with your profile and activity.', status: hasGoalConfig ? 'Active' : 'Not configured', onPress: () => router.push('/(tabs)/nutrition') },
+            { key: 'mood', title: 'Mood Agent', description: 'View mood analysis and stress-recovery tips based on your check-ins.', status: isActiveForState ? 'Active' : 'Not configured', onPress: () => Alert.alert('Mood Agent', 'Mood analysis screen can be connected next.') },
+            { key: 'fitness', title: 'Fitness Agent', description: 'Get workout recommendations from your physical state and activity data.', status: isActiveForState ? 'Active' : 'Not configured', onPress: () => Alert.alert('Fitness Agent', 'Workout recommendations screen can be connected next.') },
         ];
-
         if (hasAppleWatch) {
-            base.push({
-                key: 'health-system',
-                title: 'Health System',
-                description: 'Upload your Apple Watch export ZIP to sync biometric health data.',
-                status: healthData ? 'Active' : 'Not configured',
-                onPress: () => router.push('/(tabs)/health-upload'),
-            });
+            base.push({ key: 'health-system', title: 'Health System', description: 'Upload your Apple Watch export ZIP to sync biometric health data.', status: healthData ? 'Active' : 'Not configured', onPress: () => router.push('/(tabs)/health-upload') });
         }
-
         return base;
     }, [goal, activityLevel, hasAppleWatch, todayCheckinSubmitted, healthData, router]);
 
     const setAvatarAndPersist = async (uri: string | null) => {
         setAvatarUri(uri);
-        try {
-            if (uri) {
-                await SecureStore.setItemAsync(avatarStorageKey, uri);
-            } else {
-                await SecureStore.deleteItemAsync(avatarStorageKey);
-            }
-        } catch {
-            Alert.alert('Avatar', 'Could not save avatar image locally.');
-        }
+        try { if (uri) await SecureStore.setItemAsync(avatarStorageKey, uri); else await SecureStore.deleteItemAsync(avatarStorageKey); }
+        catch { Alert.alert('Avatar', 'Could not save avatar image locally.'); }
     };
 
     const pickAvatarFromGallery = async () => {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permission.granted) {
-            Alert.alert('Permission required', 'Please allow photo access to choose an avatar.');
-            return;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            quality: 0.8,
-            aspect: [1, 1],
-        });
-
-        if (!result.canceled && result.assets[0]?.uri) {
-            await setAvatarAndPersist(result.assets[0].uri);
-        }
+        if (!permission.granted) { Alert.alert('Permission required', 'Please allow photo access to choose an avatar.'); return; }
+        const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8, aspect: [1, 1] });
+        if (!result.canceled && result.assets[0]?.uri) await setAvatarAndPersist(result.assets[0].uri);
     };
 
     const takeAvatarPhoto = async () => {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
-        if (!permission.granted) {
-            Alert.alert('Permission required', 'Please allow camera access to take a profile photo.');
-            return;
-        }
-
-        const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            quality: 0.8,
-            aspect: [1, 1],
-        });
-
-        if (!result.canceled && result.assets[0]?.uri) {
-            await setAvatarAndPersist(result.assets[0].uri);
-        }
+        if (!permission.granted) { Alert.alert('Permission required', 'Please allow camera access to take a profile photo.'); return; }
+        const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8, aspect: [1, 1] });
+        if (!result.canceled && result.assets[0]?.uri) await setAvatarAndPersist(result.assets[0].uri);
     };
 
     const handleAvatarPress = () => {
@@ -400,6 +249,7 @@ export default function ProfileScreen() {
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <Text style={styles.screenTitle}>Profile</Text>
 
+                {/* ── Avatar + name hero ── */}
                 <View style={styles.heroRow}>
                     <Pressable onPress={handleAvatarPress} style={styles.avatarWrap}>
                         {avatarUri ? <Image source={{ uri: avatarUri }} style={styles.avatarImage} /> : <Text style={styles.avatarInitial}>{(name || user?.email || 'U').charAt(0).toUpperCase()}</Text>}
@@ -410,6 +260,7 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
+                {/* ── Stats row ── */}
                 <View style={styles.statsRow}>
                     <View style={styles.statItem}>
                         <Text style={styles.statValue}>{Math.round(profileCompletion)}%</Text>
@@ -427,6 +278,7 @@ export default function ProfileScreen() {
 
                 <SectionDivider />
 
+                {/* ── Personal details ── */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Personal details</Text>
                     <Field label="Name" value={name} onChangeText={setName} placeholder="Your name" />
@@ -435,32 +287,14 @@ export default function ProfileScreen() {
                     <View style={styles.rowGap}>
                         <Field label={`Weight (${weightUnit})`} value={weight} onChangeText={setWeight} placeholder="0" keyboardType="numeric" />
                         <View style={styles.unitRow}>
-                            <Chip
-                                label="kg"
-                                selected={weightUnit === 'kg'}
-                                onPress={() => {
-                                    if (weight.trim()) {
-                                        const parsed = parseFloat(weight);
-                                        if (Number.isFinite(parsed)) {
-                                            setWeight(weightUnit === 'lbs' ? toKg(parsed).toFixed(1) : parsed.toFixed(1));
-                                        }
-                                    }
-                                    setWeightUnit('kg');
-                                }}
-                            />
-                            <Chip
-                                label="lbs"
-                                selected={weightUnit === 'lbs'}
-                                onPress={() => {
-                                    if (weight.trim()) {
-                                        const parsed = parseFloat(weight);
-                                        if (Number.isFinite(parsed)) {
-                                            setWeight(weightUnit === 'kg' ? toLbs(parsed).toFixed(1) : parsed.toFixed(1));
-                                        }
-                                    }
-                                    setWeightUnit('lbs');
-                                }}
-                            />
+                            <Chip label="kg" selected={weightUnit === 'kg'} onPress={() => {
+                                if (weight.trim()) { const parsed = parseFloat(weight); if (Number.isFinite(parsed)) setWeight(weightUnit === 'lbs' ? toKg(parsed).toFixed(1) : parsed.toFixed(1)); }
+                                setWeightUnit('kg');
+                            }} />
+                            <Chip label="lbs" selected={weightUnit === 'lbs'} onPress={() => {
+                                if (weight.trim()) { const parsed = parseFloat(weight); if (Number.isFinite(parsed)) setWeight(weightUnit === 'kg' ? toLbs(parsed).toFixed(1) : parsed.toFixed(1)); }
+                                setWeightUnit('lbs');
+                            }} />
                         </View>
                     </View>
 
@@ -469,42 +303,22 @@ export default function ProfileScreen() {
                             <Field label="Height (cm)" value={heightCm} onChangeText={setHeightCm} placeholder="0" keyboardType="numeric" />
                         ) : (
                             <View style={styles.heightRow}>
-                                <View style={{ flex: 1 }}>
-                                    <Field label="Height (ft)" value={heightFeet} onChangeText={setHeightFeet} placeholder="ft" keyboardType="numeric" />
-                                </View>
+                                <View style={{ flex: 1 }}><Field label="Height (ft)" value={heightFeet} onChangeText={setHeightFeet} placeholder="ft" keyboardType="numeric" /></View>
                                 <View style={{ width: 8 }} />
-                                <View style={{ flex: 1 }}>
-                                    <Field label="Height (in)" value={heightInches} onChangeText={setHeightInches} placeholder="in" keyboardType="numeric" />
-                                </View>
+                                <View style={{ flex: 1 }}><Field label="Height (in)" value={heightInches} onChangeText={setHeightInches} placeholder="in" keyboardType="numeric" /></View>
                             </View>
                         )}
-
                         <View style={styles.unitRow}>
-                            <Chip
-                                label="cm"
-                                selected={heightUnit === 'cm'}
-                                onPress={() => {
-                                    const ft = parseFloat(heightFeet);
-                                    const inch = parseFloat(heightInches);
-                                    if (Number.isFinite(ft) || Number.isFinite(inch)) {
-                                        setHeightCm(feetInchesToCm(Number.isFinite(ft) ? ft : 0, Number.isFinite(inch) ? inch : 0).toFixed(1));
-                                    }
-                                    setHeightUnit('cm');
-                                }}
-                            />
-                            <Chip
-                                label="ft/in"
-                                selected={heightUnit === 'ft/in'}
-                                onPress={() => {
-                                    const cm = parseFloat(heightCm);
-                                    if (Number.isFinite(cm)) {
-                                        const converted = cmToFeetInches(cm);
-                                        setHeightFeet(String(converted.feet));
-                                        setHeightInches(String(converted.inches));
-                                    }
-                                    setHeightUnit('ft/in');
-                                }}
-                            />
+                            <Chip label="cm" selected={heightUnit === 'cm'} onPress={() => {
+                                const ft = parseFloat(heightFeet); const inch = parseFloat(heightInches);
+                                if (Number.isFinite(ft) || Number.isFinite(inch)) setHeightCm(feetInchesToCm(Number.isFinite(ft) ? ft : 0, Number.isFinite(inch) ? inch : 0).toFixed(1));
+                                setHeightUnit('cm');
+                            }} />
+                            <Chip label="ft/in" selected={heightUnit === 'ft/in'} onPress={() => {
+                                const cm = parseFloat(heightCm);
+                                if (Number.isFinite(cm)) { const converted = cmToFeetInches(cm); setHeightFeet(String(converted.feet)); setHeightInches(String(converted.inches)); }
+                                setHeightUnit('ft/in');
+                            }} />
                         </View>
                     </View>
 
@@ -512,53 +326,33 @@ export default function ProfileScreen() {
 
                     <View style={styles.field}>
                         <Text style={styles.label}>Gender</Text>
-                        <View style={styles.chipWrap}>
-                            {genderOptions.map((item) => (
-                                <Chip key={item} label={item} selected={gender === item} onPress={() => setGender(item)} />
-                            ))}
-                        </View>
+                        <View style={styles.chipWrap}>{genderOptions.map((item) => <Chip key={item} label={item} selected={gender === item} onPress={() => setGender(item)} />)}</View>
                     </View>
-
                     <View style={styles.field}>
                         <Text style={styles.label}>Activity level</Text>
-                        <View style={styles.chipWrap}>
-                            {activityOptions.map((item) => (
-                                <Chip key={item} label={item} selected={activityLevel === item} onPress={() => setActivityLevel(item)} />
-                            ))}
-                        </View>
+                        <View style={styles.chipWrap}>{activityOptions.map((item) => <Chip key={item} label={item} selected={activityLevel === item} onPress={() => setActivityLevel(item)} />)}</View>
                     </View>
-
                     <View style={styles.field}>
                         <Text style={styles.label}>Health goal</Text>
-                        <View style={styles.chipWrap}>
-                            {goalOptions.map((item) => (
-                                <Chip key={item} label={item} selected={goal === item} onPress={() => setGoal(item)} />
-                            ))}
-                        </View>
+                        <View style={styles.chipWrap}>{goalOptions.map((item) => <Chip key={item} label={item} selected={goal === item} onPress={() => setGoal(item)} />)}</View>
                     </View>
 
                     <Field label="Weekly food budget ($)" value={weeklyBudget} onChangeText={setWeeklyBudget} placeholder="e.g. 100" keyboardType="numeric" />
 
                     <View style={styles.toggleRow}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.toggleTitle}>I don’t have Apple Watch</Text>
+                            <Text style={styles.toggleTitle}>I don't have Apple Watch</Text>
                             <Text style={styles.toggleSubtitle}>Enable manual mode to submit daily health data yourself.</Text>
                         </View>
-                        <Switch
-                            value={!hasAppleWatch}
-                            onValueChange={(value) => setHasAppleWatch(!value)}
-                            thumbColor={C.amber}
-                            trackColor={{ false: '#2D2D2D', true: '#4F3A1F' }}
-                        />
+                        <Switch value={!hasAppleWatch} onValueChange={(value) => setHasAppleWatch(!value)} thumbColor={theme.colors.green.primary} trackColor={{ false: theme.colors.ui.divider, true: 'rgba(57,255,136,0.25)' }} />
                     </View>
 
-                    <Pressable style={styles.saveButton} onPress={saveProfileHandler} disabled={isSaving || isLoading}>
-                        <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save profile'}</Text>
-                    </Pressable>
+                    <NeonButton label={isSaving ? 'Saving...' : 'Save profile'} onPress={saveProfileHandler} disabled={isSaving || isLoading} loading={isSaving} />
                 </View>
 
                 <SectionDivider />
 
+                {/* ── Manual check-in ── */}
                 <Animated.View style={manualAnimatedStyle}>
                     {!hasAppleWatch ? (
                         <View style={styles.section}>
@@ -575,17 +369,16 @@ export default function ProfileScreen() {
                                 <Field label="Mood (1-5)" value={String(mood)} onChangeText={(value) => setMood(Number(value) || 0)} placeholder="1-5" keyboardType="numeric" />
                                 <Field label="Stress (1-5)" value={String(stress)} onChangeText={(value) => setStress(Number(value) || 0)} placeholder="1-5" keyboardType="numeric" />
                             </View>
-                            <Pressable style={styles.saveButton} onPress={submitManualDataHandler} disabled={submittingCheckin}>
-                                <Text style={styles.saveButtonText}>{submittingCheckin ? 'Submitting...' : 'Submit check-in'}</Text>
-                            </Pressable>
+                            <NeonButton label={submittingCheckin ? 'Submitting...' : 'Submit check-in'} onPress={submitManualDataHandler} disabled={submittingCheckin} loading={submittingCheckin} />
                         </View>
                     ) : null}
                 </Animated.View>
 
-                {todayCheckinSubmitted && !hasAppleWatch ? <Text style={styles.checkinDone}>Today’s check-in has been submitted.</Text> : null}
+                {todayCheckinSubmitted && !hasAppleWatch ? <Text style={styles.checkinDone}>Today's check-in has been submitted.</Text> : null}
 
                 <SectionDivider />
 
+                {/* ── Agent access ── */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Agent access</Text>
                     {agentItems.map((agent) => (
@@ -604,219 +397,61 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: C.bg,
-    },
-    content: {
-        paddingHorizontal: 16,
-        paddingTop: 10,
-        paddingBottom: 30,
-        gap: 12,
-    },
-    screenTitle: {
-        color: C.text,
-        fontSize: 32,
-        fontWeight: '800',
-        marginBottom: 2,
-    },
-    heroRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
+    safeArea: { flex: 1, backgroundColor: theme.colors.background.main },
+    content: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 100, gap: 14 },
+    screenTitle: { color: theme.colors.text.primary, fontSize: 34, fontWeight: '800', letterSpacing: 0.3, marginBottom: 2 },
+    heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
     avatarWrap: {
-        width: 74,
-        height: 74,
-        borderRadius: 37,
-        borderWidth: 1,
-        borderColor: C.border,
-        backgroundColor: C.card,
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden',
+        width: 74, height: 74, borderRadius: 37,
+        borderWidth: 2, borderColor: 'rgba(57,255,136,0.25)',
+        backgroundColor: theme.colors.background.secondary,
+        justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
+        ...theme.glow.subtle,
     },
-    avatarImage: {
-        width: '100%',
-        height: '100%',
-    },
-    avatarInitial: {
-        color: C.amber,
-        fontSize: 30,
-        fontWeight: '800',
-    },
-    heroTextCol: {
-        flex: 1,
-        gap: 2,
-    },
-    heroName: {
-        color: C.text,
-        fontSize: 24,
-        fontWeight: '800',
-    },
-    heroEmail: {
-        color: C.body,
-        fontSize: 13,
-    },
-    statsRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 2,
-    },
-    statItem: {
-        flex: 1,
-        paddingVertical: 6,
-    },
-    statValue: {
-        color: C.text,
-        fontSize: 30,
-        fontWeight: '900',
-        lineHeight: 34,
-    },
-    statLabel: {
-        color: C.muted,
-        fontSize: 11,
-        fontWeight: '600',
-        marginTop: 1,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: C.border,
-        marginVertical: 2,
-    },
-    section: {
-        gap: 10,
-    },
-    sectionTitle: {
-        color: C.amber,
-        fontSize: 14,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginBottom: 1,
-    },
-    field: {
-        gap: 6,
-        flex: 1,
-    },
-    label: {
-        color: C.body,
-        fontSize: 12,
-        fontWeight: '600',
-    },
+    avatarImage: { width: '100%', height: '100%' },
+    avatarInitial: { color: theme.colors.green.primary, fontSize: 30, fontWeight: '800' },
+    heroTextCol: { flex: 1, gap: 2 },
+    heroName: { color: theme.colors.text.primary, fontSize: 24, fontWeight: '800' },
+    heroEmail: { color: theme.colors.text.muted, fontSize: 13 },
+    statsRow: { flexDirection: 'row', gap: 12, marginTop: 2 },
+    statItem: { flex: 1, backgroundColor: theme.colors.background.secondary, borderRadius: theme.radius.lg, padding: 14 },
+    statValue: { color: theme.colors.text.primary, fontSize: 28, fontWeight: '900', lineHeight: 32 },
+    statLabel: { color: theme.colors.text.muted, fontSize: 11, fontWeight: '600', marginTop: 2 },
+    divider: { height: 1, backgroundColor: theme.colors.ui.divider, marginVertical: 2 },
+    section: { gap: 12 },
+    sectionTitle: { color: theme.colors.green.primary, fontSize: 14, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 },
+    field: { gap: 6, flex: 1 },
+    label: { color: theme.colors.text.secondary, fontSize: 12, fontWeight: '600' },
     input: {
-        backgroundColor: C.card,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: C.border,
-        color: C.text,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 14,
+        backgroundColor: theme.colors.background.elevated, borderRadius: theme.radius.sm,
+        borderWidth: 1.5, borderColor: theme.colors.ui.divider,
+        color: theme.colors.text.primary, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14,
     },
-    rowGap: {
-        gap: 8,
-    },
-    twoColRow: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    unitRow: {
-        flexDirection: 'row',
-        gap: 8,
-        flexWrap: 'wrap',
-    },
-    chipWrap: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
+    rowGap: { gap: 8 },
+    twoColRow: { flexDirection: 'row', gap: 8 },
+    unitRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+    chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: {
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: C.border,
-        backgroundColor: C.card,
-        paddingHorizontal: 12,
-        paddingVertical: 7,
+        borderRadius: theme.radius.full,
+        backgroundColor: theme.colors.background.secondary,
+        paddingHorizontal: 14, paddingVertical: 8,
     },
-    chipSelected: {
-        borderColor: 'rgba(57,255,136,0.5)',
-        backgroundColor: 'rgba(57,255,136,0.14)',
-    },
-    chipText: {
-        color: C.body,
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    chipTextSelected: {
-        color: C.amber,
-    },
-    toggleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 4,
-    },
-    toggleTitle: {
-        color: C.text,
-        fontSize: 14,
-        fontWeight: '700',
-    },
-    toggleSubtitle: {
-        color: C.muted,
-        fontSize: 12,
-        marginTop: 2,
-    },
-    saveButton: {
-        marginTop: 4,
-        backgroundColor: C.amber,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 42,
-    },
-    saveButtonText: {
-        color: '#0F1412',
-        fontSize: 14,
-        fontWeight: '800',
-    },
-    heightRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    checkinDone: {
-        color: C.amber,
-        fontSize: 12,
-        fontWeight: '600',
-    },
+    chipSelected: { backgroundColor: 'rgba(57,255,136,0.14)' },
+    chipText: { color: theme.colors.text.secondary, fontSize: 12, fontWeight: '600' },
+    chipTextSelected: { color: theme.colors.green.primary },
+    toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+    toggleTitle: { color: theme.colors.text.primary, fontSize: 14, fontWeight: '700' },
+    toggleSubtitle: { color: theme.colors.text.muted, fontSize: 12, marginTop: 2 },
+    heightRow: { flexDirection: 'row', alignItems: 'center' },
+    checkinDone: { color: theme.colors.green.primary, fontSize: 12, fontWeight: '600' },
     agentRow: {
-        flexDirection: 'row',
-        gap: 10,
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: C.border,
-        paddingBottom: 12,
-        marginBottom: 2,
+        flexDirection: 'row', gap: 10, alignItems: 'center',
+        backgroundColor: theme.colors.background.secondary, borderRadius: theme.radius.lg,
+        padding: 14,
     },
-    agentTitle: {
-        color: C.text,
-        fontSize: 15,
-        fontWeight: '700',
-    },
-    agentDescription: {
-        color: C.body,
-        fontSize: 12,
-        marginTop: 2,
-        lineHeight: 17,
-    },
-    agentStatus: {
-        fontSize: 12,
-        fontWeight: '700',
-    },
-    agentStatusActive: {
-        color: C.amber,
-    },
-    agentStatusMuted: {
-        color: C.muted,
-    },
+    agentTitle: { color: theme.colors.text.primary, fontSize: 15, fontWeight: '700' },
+    agentDescription: { color: theme.colors.text.secondary, fontSize: 12, marginTop: 2, lineHeight: 17 },
+    agentStatus: { fontSize: 12, fontWeight: '700' },
+    agentStatusActive: { color: theme.colors.green.primary },
+    agentStatusMuted: { color: theme.colors.text.muted },
 });

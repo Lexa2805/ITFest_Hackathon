@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
+import { theme } from "@/constants/theme";
 
 interface TabButtonProps {
     label: string;
@@ -20,21 +21,19 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: 10,
         paddingVertical: 10,
-        borderWidth: 1,
-        borderColor: "#1E1E1E",
         alignItems: "center",
-        backgroundColor: "#141414",
+        backgroundColor: theme.colors.background.secondary,
     },
     activeTab: {
-        borderColor: "#00E676",
-        backgroundColor: "#121A15",
+        backgroundColor: theme.colors.background.elevated,
+        ...theme.glow.subtle,
     },
     text: {
-        color: "#93A19A",
+        color: theme.colors.text.muted,
         fontWeight: "600",
         fontSize: 13,
     },
     activeText: {
-        color: "#00E676",
+        color: theme.colors.green.primary,
     },
 });

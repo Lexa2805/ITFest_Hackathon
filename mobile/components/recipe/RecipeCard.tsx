@@ -1,6 +1,8 @@
 import React from 'react';
-import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { RecipeSuggestion } from '@/services/recipeApi';
+import { theme } from '@/constants/theme';
 
 interface RecipeCardProps {
   recipe: RecipeSuggestion;
@@ -20,64 +22,49 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
       accessibilityRole="button"
       accessibilityLabel={`${name}, ${pct}% match`}
     >
-      <ImageBackground
-        source={{ uri: undefined }}
-        style={styles.bg}
-        imageStyle={styles.bgImage}
-      >
-        {/* Glassmorphism overlay */}
-        <View style={styles.overlay}>
-          <View style={styles.topRow}>
-            <Text style={styles.name} numberOfLines={2}>{name}</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{pct}%</Text>
-            </View>
-          </View>
-
-          <Text style={styles.macros}>
-            {macros?.kcal ?? 0} kcal · {macros?.protein ?? 0}g P · {macros?.fat ?? 0}g F · {macros?.carbs ?? 0}g C
-          </Text>
-
-          {missingCount > 0 && (
-            <Text style={styles.missing}>
-              {missingCount} ingredient{missingCount !== 1 ? 's' : ''} missing
-            </Text>
-          )}
+      <LinearGradient
+        colors={['rgba(57,255,136,0.04)', 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.topRow}>
+        <Text style={styles.name} numberOfLines={2}>{name}</Text>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{pct}%</Text>
         </View>
-      </ImageBackground>
+      </View>
+      <Text style={styles.macros}>
+        {macros?.kcal ?? 0} kcal · {macros?.protein ?? 0}g P · {macros?.fat ?? 0}g F · {macros?.carbs ?? 0}g C
+      </Text>
+      {missingCount > 0 && (
+        <Text style={styles.missing}>
+          {missingCount} ingredient{missingCount !== 1 ? 's' : ''} missing
+        </Text>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, overflow: 'hidden', marginBottom: 12 },
-  pressed: { opacity: 0.8 },
-  bg: { minHeight: 140 },
-  bgImage: { borderRadius: 16 },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(19,18,28,0.82)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(247,244,239,0.10)',
-    padding: 14,
-    justifyContent: 'flex-end',
-    gap: 6,
-  },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  card: {
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.radius.lg,
+    padding: 16,
     gap: 8,
+    marginBottom: 12,
+    overflow: 'hidden',
   },
-  name: { flex: 1, color: '#F7F4EF', fontSize: 16, fontWeight: '700' },
+  pressed: { opacity: 0.8 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
+  name: { flex: 1, color: theme.colors.text.primary, fontSize: 16, fontWeight: '700' },
   badge: {
-    backgroundColor: 'rgba(57,255,136,0.18)',
-    borderRadius: 999,
+    backgroundColor: 'rgba(57,255,136,0.14)',
+    borderRadius: theme.radius.full,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  badgeText: { color: '#39FF88', fontSize: 12, fontWeight: '700' },
-  macros: { color: '#C8C1B6', fontSize: 12 },
-  missing: { color: '#E7836D', fontSize: 12, fontWeight: '600' },
+  badgeText: { color: theme.colors.green.primary, fontSize: 12, fontWeight: '700' },
+  macros: { color: theme.colors.text.secondary, fontSize: 12 },
+  missing: { color: theme.colors.error, fontSize: 12, fontWeight: '600' },
 });

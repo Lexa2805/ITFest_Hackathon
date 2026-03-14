@@ -1,3 +1,8 @@
+/**
+ * NutritionScreen — cyber-wellness aesthetic with bento-box layout,
+ * neon-green accents, and spacing-driven content separation.
+ */
+
 import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -15,6 +20,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { MacroBar } from '@/components/nutrition/MacroBar';
 import { PhotoMealCapture } from '@/components/nutrition/PhotoMealCapture';
@@ -35,18 +42,9 @@ import {
 } from '@/services/nutritionApi';
 import { useAuthStore } from '@/stores/authStore';
 import { FridgeScreenContent } from '@/app/(tabs)/two';
-
-const C = {
-    bg: '#0D0D14',
-    card: '#13121C',
-    border: 'rgba(247,244,239,0.12)',
-    text: '#F7F4EF',
-    body: '#C8C1B6',
-    muted: '#8F8779',
-    amber: '#39FF88',
-    coral: '#E7836D',
-    danger: '#F08A7C',
-} as const;
+import { theme } from '@/constants/theme';
+import { NeonButton } from '@/components/ui/NeonButton';
+import { BentoCard } from '@/components/ui/BentoCard';
 
 type NutritionTab = 'main' | 'fridge';
 type MealMoment = 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -82,10 +80,13 @@ function RecipeHeroCard({ meal, index, onPick }: { meal: PlannedMeal; index: num
     return (
         <Pressable onPress={onPick} style={styles.recipeCardWrap}>
             <ImageBackground source={{ uri: sources[index % sources.length] }} style={styles.recipeCardImage} imageStyle={styles.recipeImageStyle}>
-                <View style={styles.recipeOverlay}>
+                <LinearGradient
+                    colors={['transparent', 'rgba(15,20,18,0.85)']}
+                    style={styles.recipeOverlay}
+                >
                     <Text style={styles.recipeTitle} numberOfLines={2}>{meal.meal_name}</Text>
                     <Text style={styles.recipeMeta}>{meal.kcal} kcal · P {meal.protein_g} · F {meal.fat_g} · C {meal.carbs_g}</Text>
-                </View>
+                </LinearGradient>
             </ImageBackground>
         </Pressable>
     );
@@ -297,7 +298,7 @@ export default function NutritionScreen() {
     if (loading) {
         return (
             <SafeAreaView style={[styles.safeArea, styles.loadingState]}>
-                <ActivityIndicator color={C.amber} size="large" />
+                <ActivityIndicator color={theme.colors.green.primary} size="large" />
             </SafeAreaView>
         );
     }
@@ -328,73 +329,92 @@ export default function NutritionScreen() {
             <ScrollView
                 style={styles.screen}
                 contentContainerStyle={styles.content}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.amber} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.green.primary} />}
             >
-                <View style={styles.headerBlock}>
-                    <Text style={styles.title}>Nutrition</Text>
-                    <Text style={styles.subtitle}>Plan clean meals from your profile and daily targets.</Text>
+                {/* ── Header ── */}
+                <Animated.View entering={FadeInDown.duration(400)}>
+                    <View style={styles.headerBlock}>
+                        <Text style={styles.title}>Nutrition</Text>
+                        <Text style={styles.subtitle}>Plan clean meals from your profile and daily targets.</Text>
 
-                    <View style={styles.tabRow}>
-                        <Pressable style={[styles.tabPill, styles.tabPillActive]} onPress={() => setActiveTab('main')}>
-                            <Text style={[styles.tabPillText, styles.tabPillTextActive]}>Recipes</Text>
-                        </Pressable>
-                        <Pressable style={styles.tabPill} onPress={() => setActiveTab('fridge')}>
-                            <Text style={styles.tabPillText}>Fridge</Text>
-                        </Pressable>
-                    </View>
-
-                    {error ? <Text style={styles.error}>{error}</Text> : null}
-                </View>
-
-                <View style={styles.heroStats}>
-                    <Text style={styles.heroNumber}>{dailySummary?.kcal.consumed ?? 0}</Text>
-                    <Text style={styles.heroSuffix}>/ {dailySummary?.kcal.target ?? 0} kcal</Text>
-                    <Text style={styles.heroStatus}>{dailySummary?.status ?? 'On track'}</Text>
-                </View>
-
-                <View style={styles.macroWrap}>
-                    <MacroBar label="Protein" consumed={dailySummary?.protein.consumed ?? 0} target={dailySummary?.protein.target ?? 0} />
-                    <MacroBar label="Fat" consumed={dailySummary?.fat.consumed ?? 0} target={dailySummary?.fat.target ?? 0} />
-                    <MacroBar label="Carbs" consumed={dailySummary?.carbs.consumed ?? 0} target={dailySummary?.carbs.target ?? 0} />
-                </View>
-
-                <View style={styles.rowActions}>
-                    <Pressable style={styles.primaryButton} onPress={handleGeneratePlan}>
-                        <Text style={styles.primaryButtonText}>Generate new plan</Text>
-                    </Pressable>
-                    <Pressable style={styles.secondaryButton} onPress={() => setShowLogMealSheet(true)}>
-                        <Text style={styles.secondaryButtonText}>Log a meal</Text>
-                    </Pressable>
-                </View>
-
-                <Text style={styles.sectionTitle}>Recipe suggestions</Text>
-                <View style={styles.recipeList}>
-                    {(plannedMealsFlat.length > 0 ? plannedMealsFlat : []).slice(0, 6).map((meal, index) => (
-                        <RecipeHeroCard key={`${meal.meal_name}-${index}`} meal={meal} index={index} onPick={() => handlePickFromPlan(meal)} />
-                    ))}
-                    {plannedMealsFlat.length === 0 ? (
-                        <View style={styles.emptyCard}>
-                            <Text style={styles.emptyText}>Generate a meal plan to see recipe cards.</Text>
+                        <View style={styles.tabRow}>
+                            <Pressable style={[styles.tabPill, styles.tabPillActive]} onPress={() => setActiveTab('main')}>
+                                <Text style={[styles.tabPillText, styles.tabPillTextActive]}>Recipes</Text>
+                            </Pressable>
+                            <Pressable style={styles.tabPill} onPress={() => setActiveTab('fridge')}>
+                                <Text style={styles.tabPillText}>Fridge</Text>
+                            </Pressable>
                         </View>
-                    ) : null}
-                </View>
 
-                <Text style={styles.sectionTitle}>Explore recipes</Text>
-                <View style={styles.flowEntrySection}>
-                    <FlowEntryCard
-                        icon="restaurant-outline"
-                        title="What can I cook tonight?"
-                        subtitle="Get suggestions matched to your fridge"
-                        onPress={() => router.push('/recipe-suggestions')}
-                    />
-                    <FlowEntryCard
-                        icon="calendar-outline"
-                        title="Plan my week"
-                        subtitle="Generate a 7-day meal plan"
-                        onPress={() => router.push('/weekly-plan')}
-                    />
-                </View>
+                        {error ? <Text style={styles.error}>{error}</Text> : null}
+                    </View>
+                </Animated.View>
 
+                {/* ── Hero calorie card ── */}
+                <Animated.View entering={FadeInDown.duration(500).delay(100)}>
+                    <View style={styles.heroStats}>
+                        <Text style={styles.heroNumber}>{dailySummary?.kcal.consumed ?? 0}</Text>
+                        <Text style={styles.heroSuffix}>/ {dailySummary?.kcal.target ?? 0} kcal</Text>
+                        <Text style={styles.heroStatus}>{dailySummary?.status ?? 'On track'}</Text>
+                    </View>
+                </Animated.View>
+
+                {/* ── Macro bars ── */}
+                <Animated.View entering={FadeInDown.duration(500).delay(150)}>
+                    <View style={styles.macroWrap}>
+                        <MacroBar label="Protein" consumed={dailySummary?.protein.consumed ?? 0} target={dailySummary?.protein.target ?? 0} />
+                        <MacroBar label="Fat" consumed={dailySummary?.fat.consumed ?? 0} target={dailySummary?.fat.target ?? 0} />
+                        <MacroBar label="Carbs" consumed={dailySummary?.carbs.consumed ?? 0} target={dailySummary?.carbs.target ?? 0} />
+                    </View>
+                </Animated.View>
+
+                {/* ── Actions ── */}
+                <Animated.View entering={FadeInDown.duration(500).delay(200)}>
+                    <View style={styles.rowActions}>
+                        <View style={{ flex: 1 }}>
+                            <NeonButton label="Generate new plan" onPress={handleGeneratePlan} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <NeonButton label="Log a meal" onPress={() => setShowLogMealSheet(true)} variant="ghost" />
+                        </View>
+                    </View>
+                </Animated.View>
+
+                {/* ── Recipe suggestions ── */}
+                <Animated.View entering={FadeInDown.duration(500).delay(250)}>
+                    <Text style={styles.sectionTitle}>Recipe suggestions</Text>
+                    <View style={styles.recipeList}>
+                        {(plannedMealsFlat.length > 0 ? plannedMealsFlat : []).slice(0, 6).map((meal, index) => (
+                            <RecipeHeroCard key={`${meal.meal_name}-${index}`} meal={meal} index={index} onPick={() => handlePickFromPlan(meal)} />
+                        ))}
+                        {plannedMealsFlat.length === 0 ? (
+                            <View style={styles.emptyCard}>
+                                <Text style={styles.emptyText}>Generate a meal plan to see recipe cards.</Text>
+                            </View>
+                        ) : null}
+                    </View>
+                </Animated.View>
+
+                {/* ── Explore recipes ── */}
+                <Animated.View entering={FadeInDown.duration(500).delay(300)}>
+                    <Text style={styles.sectionTitle}>Explore recipes</Text>
+                    <View style={styles.flowEntrySection}>
+                        <FlowEntryCard
+                            icon="restaurant-outline"
+                            title="What can I cook tonight?"
+                            subtitle="Get suggestions matched to your fridge"
+                            onPress={() => router.push('/recipe-suggestions')}
+                        />
+                        <FlowEntryCard
+                            icon="calendar-outline"
+                            title="Plan my week"
+                            subtitle="Generate a 7-day meal plan"
+                            onPress={() => router.push('/weekly-plan')}
+                        />
+                    </View>
+                </Animated.View>
+
+                {/* ── Photo meal capture ── */}
                 <PhotoMealCapture
                     onComplete={() => {
                         if (userId) {
@@ -403,6 +423,7 @@ export default function NutritionScreen() {
                     }}
                 />
 
+                {/* ── Logged meals by time of day ── */}
                 {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((timeOfDay) => {
                     const meals = (dailySummary?.meals ?? []).filter((meal) => meal.time_of_day === timeOfDay);
                     return (
@@ -423,6 +444,7 @@ export default function NutritionScreen() {
                 })}
             </ScrollView>
 
+            {/* ── Log Meal Modal ── */}
             <Modal visible={showLogMealSheet} transparent animationType="slide" onRequestClose={() => setShowLogMealSheet(false)}>
                 <View style={styles.sheetBackdrop}>
                     <ScrollView style={styles.sheetCard} contentContainerStyle={styles.sheetContent}>
@@ -430,7 +452,7 @@ export default function NutritionScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Meal name"
-                            placeholderTextColor={C.muted}
+                            placeholderTextColor={theme.colors.text.muted}
                             value={mealForm.meal_name}
                             onChangeText={(value) => setMealForm((current) => ({ ...current, meal_name: value }))}
                         />
@@ -440,16 +462,14 @@ export default function NutritionScreen() {
                             <TextInput
                                 style={[styles.input, styles.rowInput]}
                                 placeholder="Barcode"
-                                placeholderTextColor={C.muted}
+                                placeholderTextColor={theme.colors.text.muted}
                                 value={barcodeValue}
                                 onChangeText={setBarcodeValue}
                                 keyboardType="numeric"
                             />
                             <Pressable
                                 style={[styles.secondaryButton, styles.inlineButton]}
-                                onPress={() => {
-                                    void handleLookupBarcode();
-                                }}
+                                onPress={() => { void handleLookupBarcode(); }}
                                 disabled={barcodeLookupLoading}
                             >
                                 <Text style={styles.secondaryButtonText}>{barcodeLookupLoading ? 'Looking up...' : 'Use barcode'}</Text>
@@ -459,7 +479,7 @@ export default function NutritionScreen() {
                             <Text style={styles.secondaryButtonText}>Scan barcode with camera</Text>
                         </Pressable>
 
-                        <Text style={styles.fieldLabel}>Pick from today’s plan</Text>
+                        <Text style={styles.fieldLabel}>Pick from today's plan</Text>
                         <View style={styles.planPickWrap}>
                             {plannedMealsFlat.map((meal, index) => (
                                 <Pressable key={`${meal.meal_name}-${index}`} style={styles.planPickChip} onPress={() => handlePickFromPlan(meal)}>
@@ -470,65 +490,22 @@ export default function NutritionScreen() {
 
                         <Text style={styles.fieldLabel}>Add ingredients one by one</Text>
                         <View style={styles.rowInputs}>
-                            <TextInput
-                                style={[styles.input, styles.rowInput]}
-                                placeholder="Name"
-                                placeholderTextColor={C.muted}
-                                value={ingredientDraftName}
-                                onChangeText={setIngredientDraftName}
-                            />
-                            <TextInput
-                                style={[styles.input, styles.rowInput]}
-                                placeholder="Grams"
-                                placeholderTextColor={C.muted}
-                                keyboardType="numeric"
-                                value={ingredientDraftGrams}
-                                onChangeText={setIngredientDraftGrams}
-                            />
+                            <TextInput style={[styles.input, styles.rowInput]} placeholder="Name" placeholderTextColor={theme.colors.text.muted} value={ingredientDraftName} onChangeText={setIngredientDraftName} />
+                            <TextInput style={[styles.input, styles.rowInput]} placeholder="Grams" placeholderTextColor={theme.colors.text.muted} keyboardType="numeric" value={ingredientDraftGrams} onChangeText={setIngredientDraftGrams} />
                         </View>
                         <Pressable style={styles.secondaryButton} onPress={handleAddDraftIngredient}>
                             <Text style={styles.secondaryButtonText}>Add ingredient</Text>
                         </Pressable>
 
                         {mealForm.ingredients.map((ingredient, index) => (
-                            <Text key={`${ingredient.name}-${index}`} style={styles.ingredientMeta}>
-                                • {ingredient.name} — {ingredient.grams}g
-                            </Text>
+                            <Text key={`${ingredient.name}-${index}`} style={styles.ingredientMeta}>• {ingredient.name} — {ingredient.grams}g</Text>
                         ))}
 
                         <View style={styles.rowInputs}>
-                            <TextInput
-                                style={[styles.input, styles.rowInput]}
-                                placeholder="kcal"
-                                placeholderTextColor={C.muted}
-                                keyboardType="numeric"
-                                value={mealForm.kcal}
-                                onChangeText={(value) => setMealForm((current) => ({ ...current, kcal: value }))}
-                            />
-                            <TextInput
-                                style={[styles.input, styles.rowInput]}
-                                placeholder="Protein"
-                                placeholderTextColor={C.muted}
-                                keyboardType="numeric"
-                                value={mealForm.protein}
-                                onChangeText={(value) => setMealForm((current) => ({ ...current, protein: value }))}
-                            />
-                            <TextInput
-                                style={[styles.input, styles.rowInput]}
-                                placeholder="Fat"
-                                placeholderTextColor={C.muted}
-                                keyboardType="numeric"
-                                value={mealForm.fat}
-                                onChangeText={(value) => setMealForm((current) => ({ ...current, fat: value }))}
-                            />
-                            <TextInput
-                                style={[styles.input, styles.rowInput]}
-                                placeholder="Carbs"
-                                placeholderTextColor={C.muted}
-                                keyboardType="numeric"
-                                value={mealForm.carbs}
-                                onChangeText={(value) => setMealForm((current) => ({ ...current, carbs: value }))}
-                            />
+                            <TextInput style={[styles.input, styles.rowInput]} placeholder="kcal" placeholderTextColor={theme.colors.text.muted} keyboardType="numeric" value={mealForm.kcal} onChangeText={(value) => setMealForm((current) => ({ ...current, kcal: value }))} />
+                            <TextInput style={[styles.input, styles.rowInput]} placeholder="Protein" placeholderTextColor={theme.colors.text.muted} keyboardType="numeric" value={mealForm.protein} onChangeText={(value) => setMealForm((current) => ({ ...current, protein: value }))} />
+                            <TextInput style={[styles.input, styles.rowInput]} placeholder="Fat" placeholderTextColor={theme.colors.text.muted} keyboardType="numeric" value={mealForm.fat} onChangeText={(value) => setMealForm((current) => ({ ...current, fat: value }))} />
+                            <TextInput style={[styles.input, styles.rowInput]} placeholder="Carbs" placeholderTextColor={theme.colors.text.muted} keyboardType="numeric" value={mealForm.carbs} onChangeText={(value) => setMealForm((current) => ({ ...current, carbs: value }))} />
                         </View>
 
                         <Text style={styles.fieldLabel}>Time of day</Text>
@@ -544,13 +521,12 @@ export default function NutritionScreen() {
                             ))}
                         </View>
 
-                        <Pressable style={styles.primaryButton} onPress={handleLogMeal}>
-                            <Text style={styles.primaryButtonText}>Save meal log</Text>
-                        </Pressable>
+                        <NeonButton label="Save meal log" onPress={handleLogMeal} />
                     </ScrollView>
                 </View>
             </Modal>
 
+            {/* ── Barcode Scanner Modal ── */}
             <Modal visible={showBarcodeScanner} transparent animationType="slide" onRequestClose={() => setShowBarcodeScanner(false)}>
                 <View style={styles.sheetBackdrop}>
                     <View style={styles.scannerCard}>
@@ -564,9 +540,7 @@ export default function NutritionScreen() {
                                 barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }}
                             />
                         </View>
-                        <Pressable style={styles.secondaryButton} onPress={() => setShowBarcodeScanner(false)}>
-                            <Text style={styles.secondaryButtonText}>Close scanner</Text>
-                        </Pressable>
+                        <NeonButton label="Close scanner" onPress={() => setShowBarcodeScanner(false)} variant="ghost" />
                     </View>
                 </View>
             </Modal>
@@ -577,7 +551,7 @@ export default function NutritionScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: C.bg,
+        backgroundColor: theme.colors.background.main,
     },
     loadingState: {
         justifyContent: 'center',
@@ -587,122 +561,89 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     content: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 18,
         paddingVertical: 12,
-        gap: 12,
+        paddingBottom: 100,
+        gap: 16,
     },
     headerBlock: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        gap: 10,
+        gap: 6,
     },
     title: {
-        color: C.text,
-        fontSize: 32,
+        color: theme.colors.text.primary,
+        fontSize: 34,
         fontWeight: '800',
+        letterSpacing: 0.3,
     },
     subtitle: {
-        color: C.body,
+        color: theme.colors.text.muted,
         fontSize: 13,
     },
     tabRow: {
         flexDirection: 'row',
         gap: 8,
+        marginTop: 4,
     },
     tabPill: {
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: C.border,
-        backgroundColor: C.card,
+        borderRadius: theme.radius.full,
+        backgroundColor: theme.colors.background.secondary,
         paddingVertical: 8,
-        paddingHorizontal: 14,
+        paddingHorizontal: 16,
     },
     tabPillActive: {
-        borderColor: 'rgba(57,255,136,0.5)',
-        backgroundColor: 'rgba(57,255,136,0.16)',
+        backgroundColor: 'rgba(57,255,136,0.14)',
     },
     tabPillText: {
-        color: C.muted,
+        color: theme.colors.text.muted,
         fontSize: 13,
         fontWeight: '600',
     },
     tabPillTextActive: {
-        color: C.amber,
+        color: theme.colors.green.primary,
         fontWeight: '700',
     },
     error: {
-        color: C.danger,
+        color: theme.colors.error,
         fontSize: 13,
     },
     heroStats: {
-        backgroundColor: C.card,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: C.border,
-        padding: 16,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.lg,
+        padding: 20,
         gap: 4,
     },
     heroNumber: {
-        color: C.text,
+        color: theme.colors.text.primary,
         fontSize: 58,
         fontWeight: '900',
         lineHeight: 62,
         letterSpacing: -1,
     },
     heroSuffix: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 14,
         fontWeight: '600',
     },
     heroStatus: {
-        color: C.coral,
+        color: theme.colors.green.accent,
         fontSize: 13,
         fontWeight: '700',
         marginTop: 2,
     },
     macroWrap: {
         gap: 10,
-        backgroundColor: C.card,
-        borderWidth: 1,
-        borderColor: C.border,
-        borderRadius: 14,
-        padding: 12,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.lg,
+        padding: 16,
     },
     rowActions: {
         flexDirection: 'row',
         gap: 10,
     },
-    primaryButton: {
-        backgroundColor: C.amber,
-        borderRadius: 12,
-        paddingVertical: 12,
-        alignItems: 'center',
-        flex: 1,
-    },
-    primaryButtonText: {
-        color: '#0F1412',
-        fontSize: 14,
-        fontWeight: '800',
-    },
-    secondaryButton: {
-        backgroundColor: C.card,
-        borderWidth: 1,
-        borderColor: C.border,
-        borderRadius: 12,
-        paddingVertical: 11,
-        paddingHorizontal: 12,
-        alignItems: 'center',
-    },
-    secondaryButtonText: {
-        color: C.body,
-        fontSize: 13,
-        fontWeight: '700',
-    },
     sectionTitle: {
-        color: C.text,
+        color: theme.colors.text.primary,
         fontSize: 18,
         fontWeight: '700',
-        marginTop: 4,
     },
     recipeList: {
         gap: 10,
@@ -711,11 +652,9 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     recipeCardWrap: {
-        borderRadius: 16,
+        borderRadius: theme.radius.lg,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: C.border,
-        backgroundColor: C.card,
+        backgroundColor: theme.colors.background.secondary,
     },
     recipeCardImage: {
         minHeight: 148,
@@ -723,44 +662,40 @@ const styles = StyleSheet.create({
     },
     recipeImageStyle: {
         opacity: 0.9,
+        borderRadius: theme.radius.lg,
     },
     recipeOverlay: {
-        backgroundColor: 'rgba(8,8,12,0.55)',
-        padding: 12,
+        padding: 14,
         gap: 4,
     },
     recipeTitle: {
-        color: C.text,
+        color: theme.colors.text.primary,
         fontSize: 18,
         fontWeight: '800',
         lineHeight: 22,
     },
     recipeMeta: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 12,
         fontWeight: '600',
     },
     emptyCard: {
-        backgroundColor: C.card,
-        borderWidth: 1,
-        borderColor: C.border,
-        borderRadius: 14,
-        padding: 14,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.lg,
+        padding: 16,
     },
     emptyText: {
-        color: C.muted,
+        color: theme.colors.text.muted,
         fontSize: 13,
     },
     loggedSection: {
-        backgroundColor: C.card,
-        borderWidth: 1,
-        borderColor: C.border,
-        borderRadius: 14,
-        padding: 12,
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.lg,
+        padding: 14,
         gap: 8,
     },
     loggedTitle: {
-        color: C.amber,
+        color: theme.colors.green.primary,
         fontSize: 14,
         fontWeight: '700',
         textTransform: 'capitalize',
@@ -769,55 +704,55 @@ const styles = StyleSheet.create({
         gap: 2,
         paddingBottom: 8,
         borderBottomWidth: 1,
-        borderBottomColor: C.border,
+        borderBottomColor: theme.colors.ui.divider,
     },
     loggedMealName: {
-        color: C.text,
+        color: theme.colors.text.primary,
         fontSize: 14,
         fontWeight: '700',
     },
     loggedMealMeta: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 12,
     },
     sheetBackdrop: {
         flex: 1,
         justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.55)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
     },
     sheetCard: {
-        backgroundColor: C.card,
-        borderTopLeftRadius: 18,
-        borderTopRightRadius: 18,
-        padding: 16,
+        backgroundColor: theme.colors.background.elevated,
+        borderTopLeftRadius: theme.radius.lg,
+        borderTopRightRadius: theme.radius.lg,
+        padding: 18,
         maxHeight: '85%',
     },
     sheetContent: {
-        gap: 10,
-        paddingBottom: 16,
+        gap: 12,
+        paddingBottom: 20,
     },
     sheetTitle: {
-        color: C.text,
-        fontSize: 18,
+        color: theme.colors.text.primary,
+        fontSize: 20,
         fontWeight: '700',
-        marginBottom: 6,
+        marginBottom: 4,
     },
     input: {
-        backgroundColor: '#10101A',
-        borderWidth: 1,
-        borderColor: C.border,
-        borderRadius: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        color: C.text,
+        backgroundColor: theme.colors.background.main,
+        borderWidth: 1.5,
+        borderColor: theme.colors.ui.divider,
+        borderRadius: theme.radius.sm,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        color: theme.colors.text.primary,
         fontSize: 14,
     },
     summaryText: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 13,
     },
     fieldLabel: {
-        color: C.body,
+        color: theme.colors.text.secondary,
         fontSize: 13,
         fontWeight: '600',
         marginTop: 4,
@@ -828,19 +763,18 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     planPickChip: {
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: C.border,
-        paddingHorizontal: 10,
+        borderRadius: theme.radius.full,
+        backgroundColor: 'rgba(57,255,136,0.08)',
+        paddingHorizontal: 12,
         paddingVertical: 6,
-        backgroundColor: '#10101A',
     },
     planPickText: {
-        color: C.amber,
+        color: theme.colors.green.primary,
         fontSize: 12,
+        fontWeight: '600',
     },
     ingredientMeta: {
-        color: C.muted,
+        color: theme.colors.text.muted,
         fontSize: 12,
     },
     rowInputs: {
@@ -853,44 +787,51 @@ const styles = StyleSheet.create({
     inlineButton: {
         justifyContent: 'center',
     },
+    secondaryButton: {
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.sm,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        alignItems: 'center',
+    },
+    secondaryButtonText: {
+        color: theme.colors.text.secondary,
+        fontSize: 13,
+        fontWeight: '700',
+    },
     unitRow: {
         flexDirection: 'row',
         gap: 8,
         flexWrap: 'wrap',
     },
     unitChip: {
-        borderWidth: 1,
-        borderColor: C.border,
-        borderRadius: 999,
-        paddingHorizontal: 12,
+        borderRadius: theme.radius.full,
+        paddingHorizontal: 14,
         paddingVertical: 8,
-        backgroundColor: '#10101A',
+        backgroundColor: theme.colors.background.main,
     },
     unitChipActive: {
-        borderColor: C.amber,
         backgroundColor: 'rgba(57,255,136,0.14)',
     },
     unitChipText: {
-        color: C.muted,
+        color: theme.colors.text.muted,
         fontSize: 12,
         fontWeight: '600',
     },
     unitChipTextActive: {
-        color: C.amber,
+        color: theme.colors.green.primary,
     },
     scannerCard: {
-        backgroundColor: C.card,
-        borderTopLeftRadius: 18,
-        borderTopRightRadius: 18,
-        padding: 16,
-        gap: 10,
+        backgroundColor: theme.colors.background.elevated,
+        borderTopLeftRadius: theme.radius.lg,
+        borderTopRightRadius: theme.radius.lg,
+        padding: 18,
+        gap: 12,
     },
     scannerFrame: {
         height: 340,
-        borderRadius: 14,
+        borderRadius: theme.radius.lg,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: C.border,
         backgroundColor: '#000',
     },
     scannerCamera: {

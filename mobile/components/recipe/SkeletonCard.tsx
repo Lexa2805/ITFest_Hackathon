@@ -1,41 +1,49 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+import { theme } from '@/constants/theme';
 
 export function SkeletonCard() {
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  const opacity = useSharedValue(0.3);
 
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
-      ]),
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.8, { duration: 800 }),
+        withTiming(0.3, { duration: 800 }),
+      ),
+      -1,
+      true,
     );
-    loop.start();
-    return () => loop.stop();
-  }, [opacity]);
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
     <View style={styles.card}>
-      <Animated.View style={[styles.titleLine, { opacity }]} />
-      <Animated.View style={[styles.shortLine, { opacity }]} />
-      <Animated.View style={[styles.shortLine, { opacity, width: '50%' }]} />
+      <Animated.View style={[styles.titleLine, animStyle]} />
+      <Animated.View style={[styles.shortLine, animStyle]} />
+      <Animated.View style={[styles.shortLine, animStyle, { width: '50%' }]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    minHeight: 140,
-    backgroundColor: '#13121C',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(247,244,239,0.10)',
-    padding: 14,
+    minHeight: 120,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.radius.lg,
+    padding: 16,
     justifyContent: 'flex-end',
     gap: 10,
     marginBottom: 12,
   },
-  titleLine: { height: 16, borderRadius: 6, backgroundColor: '#1E1D2A', width: '70%' },
-  shortLine: { height: 12, borderRadius: 6, backgroundColor: '#1E1D2A', width: '90%' },
+  titleLine: { height: 16, borderRadius: 6, backgroundColor: 'rgba(57,255,136,0.06)', width: '70%' },
+  shortLine: { height: 12, borderRadius: 6, backgroundColor: 'rgba(57,255,136,0.06)', width: '90%' },
 });

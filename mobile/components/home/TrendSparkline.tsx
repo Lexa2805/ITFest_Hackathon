@@ -1,12 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-
-const C = {
-  accent: '#00E676',
-  muted: '#93A19A',
-  title: '#F5F5F5',
-} as const;
+import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import { theme } from '@/constants/theme';
 
 type DataPoint = { date: string; value: number };
 
@@ -17,12 +12,7 @@ type Props = {
   height?: number;
 };
 
-export function TrendSparkline({
-  dataPoints,
-  label,
-  width = 140,
-  height = 40,
-}: Props) {
+export function TrendSparkline({ dataPoints, label, width = 140, height = 40 }: Props) {
   if (dataPoints.length < 2) {
     return (
       <View style={styles.container}>
@@ -52,25 +42,20 @@ export function TrendSparkline({
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <Svg width={width} height={height}>
-        <Path d={d} stroke={C.accent} strokeWidth={2} fill="none" />
+        <Defs>
+          <LinearGradient id="sparkGrad" x1="0" y1="0" x2="1" y2="0">
+            <Stop offset="0%" stopColor={theme.colors.green.primary} />
+            <Stop offset="100%" stopColor={theme.colors.chart.dark} />
+          </LinearGradient>
+        </Defs>
+        <Path d={d} stroke="url(#sparkGrad)" strokeWidth={2.5} fill="none" strokeLinecap="round" />
       </Svg>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 4,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: C.muted,
-  },
-  insufficient: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: C.muted,
-    fontStyle: 'italic',
-  },
+  container: { gap: 4 },
+  label: { fontSize: 12, fontWeight: '600', color: theme.colors.text.muted },
+  insufficient: { fontSize: 12, fontWeight: '500', color: theme.colors.text.muted, fontStyle: 'italic' },
 });

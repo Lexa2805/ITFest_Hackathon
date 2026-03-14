@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { DayPlan } from '@/services/recipeApi';
+import { theme } from '@/constants/theme';
 
 interface DayCardProps {
   dayPlan: DayPlan;
@@ -31,23 +32,15 @@ export function DayCard({ dayPlan, dayIndex, onSwapMeal }: DayCardProps) {
           </Text>
         </View>
       </View>
-
       {meals.map((meal, mi) => (
         <View key={mi} style={styles.mealRow}>
           <View style={styles.mealInfo}>
             <Text style={styles.mealType}>{meal.meal_type}</Text>
-            <Text style={styles.recipeName} numberOfLines={1}>
-              {meal.recipe?.name ?? 'Unknown'}
-            </Text>
+            <Text style={styles.recipeName} numberOfLines={1}>{meal.recipe?.name ?? 'Unknown'}</Text>
           </View>
           <Text style={styles.mealKcal}>{meal.recipe?.metadata?.macros?.kcal ?? 0} kcal</Text>
-          <Pressable
-            onPress={() => onSwapMeal(dayIndex, mi, meal.meal_type)}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel={`Swap ${meal.meal_type}`}
-          >
-            <Ionicons name="swap-horizontal" size={20} color="#39FF88" />
+          <Pressable onPress={() => onSwapMeal(dayIndex, mi, meal.meal_type)} hitSlop={10} accessibilityRole="button">
+            <Ionicons name="swap-horizontal" size={20} color={theme.colors.green.primary} />
           </Pressable>
         </View>
       ))}
@@ -57,43 +50,32 @@ export function DayCard({ dayPlan, dayIndex, onSwapMeal }: DayCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#13121C',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(247,244,239,0.10)',
-    padding: 14,
+    backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.radius.lg,
+    padding: 16,
     gap: 10,
     marginBottom: 12,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dayName: { color: '#F7F4EF', fontSize: 16, fontWeight: '700' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dayName: { color: theme.colors.text.primary, fontSize: 16, fontWeight: '700' },
   macrosBadge: {
-    backgroundColor: 'rgba(57,255,136,0.12)',
-    borderRadius: 999,
+    backgroundColor: 'rgba(57,255,136,0.1)',
+    borderRadius: theme.radius.full,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  macrosText: { color: '#39FF88', fontSize: 11, fontWeight: '600' },
+  macrosText: { color: theme.colors.green.primary, fontSize: 11, fontWeight: '600' },
   mealRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(247,244,239,0.06)',
+    borderTopColor: theme.colors.ui.divider,
   },
   mealInfo: { flex: 1, gap: 2 },
-  mealType: {
-    color: '#C8C1B6',
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  recipeName: { color: '#F7F4EF', fontSize: 14 },
-  mealKcal: { color: '#C8C1B6', fontSize: 12, marginRight: 4 },
-  emptyMsg: { color: '#6B6780', fontSize: 13, fontStyle: 'italic' },
+  mealType: { color: theme.colors.text.muted, fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  recipeName: { color: theme.colors.text.primary, fontSize: 14 },
+  mealKcal: { color: theme.colors.text.secondary, fontSize: 12, marginRight: 4 },
+  emptyMsg: { color: theme.colors.text.muted, fontSize: 13, fontStyle: 'italic' },
 });
