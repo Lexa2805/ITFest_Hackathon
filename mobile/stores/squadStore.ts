@@ -6,6 +6,8 @@
 import { create } from "zustand";
 import {
   listSquads,
+  discoverSquads as apiDiscoverSquads,
+  joinSquad as apiJoinSquad,
   createSquad as apiCreateSquad,
   getSquadDetail,
   addMember as apiAddMember,
@@ -23,12 +25,15 @@ import {
 
 interface SquadState {
   squads: Squad[];
+  discoverSquads: Squad[];
   activeSquad: SquadDetail | null;
   sharedFridge: SharedFridgeItem[];
   isLoading: boolean;
   error: string | null;
 
   fetchSquads: () => Promise<void>;
+  fetchDiscoverSquads: () => Promise<void>;
+  joinSquad: (roomId: string) => Promise<Squad>;
   createSquad: (name: string) => Promise<Squad>;
   fetchSquadDetail: (roomId: string) => Promise<void>;
   addMember: (roomId: string, userId: string) => Promise<void>;
@@ -43,6 +48,7 @@ interface SquadState {
 
 export const useSquadStore = create<SquadState>((set, get) => ({
   squads: [],
+  discoverSquads: [],
   activeSquad: null,
   sharedFridge: [],
   isLoading: false,
@@ -57,6 +63,38 @@ export const useSquadStore = create<SquadState>((set, get) => ({
       const msg =
         err?.response?.data?.detail || err?.message || "Failed to load squads.";
       set({ error: msg, isLoading: false });
+    }
+  },
+
+  fetchDiscoverSquads: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const squads = await apiDiscoverSquads();
+      set({ discoverSquads: squads, isLoading: false });
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail || err?.message || "Failed to discover squads.";
+      set({ error: msg, isLoading: false });
+    }
+  },
+
+  joinSquad: async (roomId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const squad = await apiJoinSquad(roomId);
+      set((s) => ({
+        squads: [squad, ...s.squads],
+        discoverSquads: s.discoverSquads.map((sq) =>
+          sq.id === roomId ? { ...sq, member_count: sq.member_count + 1 } : sq
+        ),
+        isLoading: false,
+      }));
+      return squad;
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail || err?.message || "Failed to join squad.";
+      set({ error: msg, isLoading: false });
+      throw err;
     }
   },
 

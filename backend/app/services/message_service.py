@@ -16,15 +16,19 @@ from app.services.supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
 
+# Keep strong references to fire-and-forget tasks so they aren't GC'd mid-flight
+_background_tasks: set[asyncio.Task] = set()
+
 MESSAGES_TABLE = "messages"
 MEMBERS_TABLE = "chat_room_members"
 
 
-def _row_to_response(row: dict) -> MessageResponse:
+def _row_to_response(row: dict, display_name: str | None = None) -> MessageResponse:
     return MessageResponse(
         id=row["id"],
         chat_room_id=row["chat_room_id"],
         sender_id=row.get("sender_id"),
+        sender_display_name=display_name,
         content=row["content"],
         message_type=row["message_type"],
         metadata=row.get("metadata") or {},
@@ -86,11 +90,23 @@ async def send_message(
             detail="Failed to send message.",
         )
 
-    msg = _row_to_response(result.data[0])
+    # Fetch sender display name
+    profile_result = await (
+        supabase.table("profiles")
+        .select("name")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    sender_name = (profile_result.data[0]["name"] if profile_result.data else None)
 
-    # Fire-and-forget agent listener if @Agent is mentioned
-    if "@Agent" in content:
-        asyncio.create_task(_trigger_agent(chat_room_id, content))
+    msg = _row_to_response(result.data[0], sender_name)
+
+    # Fire-and-forget agent listener if @Agent is mentioned (case-insensitive)
+    if "@agent" in content.lower():
+        task = asyncio.create_task(_trigger_agent(chat_room_id, content))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
     return msg
 
@@ -98,7 +114,7 @@ async def send_message(
 async def get_message_history(
     room_id: str, limit: int = 50,
 ) -> list[MessageResponse]:
-    """Return messages for a room ordered by created_at ASC."""
+    """Return messages for a room ordered by created_at ASC, enriched with sender names."""
     supabase = await get_supabase()
     result = await (
         supabase.table(MESSAGES_TABLE)
@@ -108,7 +124,26 @@ async def get_message_history(
         .limit(limit)
         .execute()
     )
-    return [_row_to_response(r) for r in (result.data or [])]
+    rows = result.data or []
+
+    # Collect unique sender IDs and batch-fetch display names
+    sender_ids = list({r["sender_id"] for r in rows if r.get("sender_id")})
+    name_map: dict[str, str] = {}
+    if sender_ids:
+        profiles = await (
+            supabase.table("profiles")
+            .select("user_id, name")
+            .in_("user_id", sender_ids)
+            .execute()
+        )
+        for p in (profiles.data or []):
+            if p.get("name"):
+                name_map[p["user_id"]] = p["name"]
+
+    return [
+        _row_to_response(r, name_map.get(r.get("sender_id", ""), None))
+        for r in rows
+    ]
 
 
 # ---------------------------------------------------------------------------

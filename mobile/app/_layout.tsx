@@ -98,6 +98,8 @@ function RootLayoutNav() {
                 <Stack.Screen name="recipe-detail/[id]" options={{ headerShown: false }} />
                 <Stack.Screen name="shopping-list" options={{ headerShown: false }} />
                 <Stack.Screen name="weekly-plan" options={{ headerShown: false }} />
+                <Stack.Screen name="squad/[id]" options={{ headerShown: true }} />
+                <Stack.Screen name="flex-profile/[id]" options={{ headerShown: true }} />
               </Stack>
             </ThemeProvider>
           </WorkoutProvider>

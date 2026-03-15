@@ -10,6 +10,7 @@ export interface Message {
   id: string;
   chat_room_id: string;
   sender_id: string | null;
+  sender_display_name: string | null;
   content: string;
   message_type: string;
   metadata: Record<string, unknown>;

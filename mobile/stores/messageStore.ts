@@ -54,7 +54,11 @@ export const useMessageStore = create<MessageState>((set, get) => ({
     set({ error: null });
     try {
       const message = await apiSendMessage(payload);
-      // Realtime will deliver the insert event; no manual append needed
+      // Append optimistically; deduplicate guard in Realtime handler prevents doubles
+      set((s) => {
+        if (s.messages.some((m) => m.id === message.id)) return s;
+        return { messages: [...s.messages, message] };
+      });
       return message;
     } catch (err: any) {
       const msg =

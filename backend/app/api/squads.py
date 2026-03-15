@@ -39,6 +39,21 @@ async def list_squads(
     return await squad_service.list_user_squads(user_id)
 
 
+@router.get("/discover", response_model=list[SquadResponse])
+async def discover_squads(
+    user_id: str = Depends(get_current_user_id),
+) -> list[SquadResponse]:
+    return await squad_service.list_all_squads(user_id)
+
+
+@router.post("/{room_id}/join", response_model=SquadResponse, status_code=status.HTTP_201_CREATED)
+async def join_squad(
+    room_id: str,
+    user_id: str = Depends(get_current_user_id),
+) -> SquadResponse:
+    return await squad_service.join_squad(user_id, room_id)
+
+
 @router.get("/{room_id}", response_model=SquadDetailResponse)
 async def get_squad_detail(
     room_id: str,

@@ -128,6 +128,98 @@ async def list_user_squads(user_id: str) -> list[SquadResponse]:
 
     return squads
 
+async def list_all_squads(user_id: str) -> list[SquadResponse]:
+    """Return all squads (for discovery), with member count and avg life score."""
+    supabase = await get_supabase()
+
+    # Fetch all rooms ordered by newest first
+    rooms_result = await (
+        supabase.table(ROOMS_TABLE)
+        .select("*")
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    squads: list[SquadResponse] = []
+    for room in rooms_result.data or []:
+        members_result = await (
+            supabase.table(MEMBERS_TABLE)
+            .select("user_id")
+            .eq("chat_room_id", room["id"])
+            .execute()
+        )
+        member_ids = [m["user_id"] for m in (members_result.data or [])]
+        avg_score, avg_grade = await _compute_avg_life_score(member_ids)
+
+        squads.append(SquadResponse(
+            id=room["id"],
+            name=room["name"],
+            created_by=room["created_by"],
+            avg_life_score=avg_score,
+            avg_life_score_grade=avg_grade,
+            member_count=len(member_ids),
+            created_at=room["created_at"],
+        ))
+
+    return squads
+
+
+async def join_squad(user_id: str, room_id: str) -> SquadResponse:
+    """Join an existing squad. Returns the squad info."""
+    supabase = await get_supabase()
+
+    # Check room exists
+    room_result = await (
+        supabase.table(ROOMS_TABLE)
+        .select("*")
+        .eq("id", room_id)
+        .single()
+        .execute()
+    )
+    if not room_result.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Squad not found.")
+
+    room = room_result.data
+
+    # Check if already a member
+    existing = await (
+        supabase.table(MEMBERS_TABLE)
+        .select("id")
+        .eq("chat_room_id", room_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if existing.data:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already a member.")
+
+    # Add as member
+    await (
+        supabase.table(MEMBERS_TABLE)
+        .insert({"chat_room_id": room_id, "user_id": user_id})
+        .execute()
+    )
+
+    # Count members
+    members_result = await (
+        supabase.table(MEMBERS_TABLE)
+        .select("user_id")
+        .eq("chat_room_id", room_id)
+        .execute()
+    )
+    member_ids = [m["user_id"] for m in (members_result.data or [])]
+    avg_score, avg_grade = await _compute_avg_life_score(member_ids)
+
+    return SquadResponse(
+        id=room["id"],
+        name=room["name"],
+        created_by=room["created_by"],
+        avg_life_score=avg_score,
+        avg_life_score_grade=avg_grade,
+        member_count=len(member_ids),
+        created_at=room["created_at"],
+    )
+
+
 
 async def get_squad_detail(user_id: str, room_id: str) -> SquadDetailResponse:
     """Return squad metadata, members with display names, and avg life score."""

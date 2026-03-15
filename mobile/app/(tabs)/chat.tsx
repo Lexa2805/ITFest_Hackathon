@@ -13,7 +13,7 @@ import {
   View,
   Keyboard,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useChatStore, type ChatMessage } from '@/stores/chatStore';
 import { theme } from '@/constants/theme';
@@ -62,8 +62,10 @@ export default function ChatScreen() {
     ]);
   };
 
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <View style={[styles.safeArea, { paddingTop: insets.top + 10 }]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Chat</Text>
@@ -126,7 +128,7 @@ export default function ChatScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

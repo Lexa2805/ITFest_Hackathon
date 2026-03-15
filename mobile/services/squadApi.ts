@@ -50,6 +50,16 @@ export async function listSquads(): Promise<Squad[]> {
   return data;
 }
 
+export async function discoverSquads(): Promise<Squad[]> {
+  const { data } = await api.get<Squad[]>("/api/squads/discover");
+  return data;
+}
+
+export async function joinSquad(roomId: string): Promise<Squad> {
+  const { data } = await api.post<Squad>(`/api/squads/${roomId}/join`);
+  return data;
+}
+
 export async function getSquadDetail(roomId: string): Promise<SquadDetail> {
   const { data } = await api.get<SquadDetail>(`/api/squads/${roomId}`);
   return data;

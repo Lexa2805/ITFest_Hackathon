@@ -37,6 +37,7 @@ class MessageResponse(BaseModel):
     id: str
     chat_room_id: str
     sender_id: Optional[str] = None
+    sender_display_name: Optional[str] = None
     content: str
     message_type: str
     metadata: dict

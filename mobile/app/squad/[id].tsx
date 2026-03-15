@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useSquadStore } from '@/stores/squadStore';
 import { useMessageStore } from '@/stores/messageStore';
+import { useAuthStore } from '@/stores/authStore';
 import { MessageBubble } from '@/components/squad/MessageBubble';
 import { theme } from '@/constants/theme';
 import type { Message } from '@/services/messageApi';
@@ -39,6 +40,7 @@ export default function SquadChatScreen() {
     subscribeToRoom,
     unsubscribeFromRoom,
   } = useMessageStore();
+  const currentUserId = useAuthStore((s) => s.user?.id ?? null);
 
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -94,9 +96,9 @@ export default function SquadChatScreen() {
 
   const renderMessage = useCallback(
     ({ item }: { item: Message }) => (
-      <MessageBubble message={item} onFork={handleFork} />
+      <MessageBubble message={item} currentUserId={currentUserId} onFork={handleFork} />
     ),
-    [handleFork],
+    [handleFork, currentUserId],
   );
 
   const squadName = activeSquad?.name ?? 'Squad';
@@ -208,7 +210,7 @@ const styles = StyleSheet.create({
   loader: { marginTop: 60 },
 
   /* Messages */
-  messageList: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8, gap: 8 },
+  messageList: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 8, gap: 6 },
 
   /* Empty */
   empty: { alignItems: 'center', marginTop: 80, gap: 6 },
