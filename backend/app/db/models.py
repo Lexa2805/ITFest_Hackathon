@@ -25,3 +25,11 @@ class ShoppingList(BaseModel):
     items: Dict[str, Any] = Field(default_factory=dict) # Grouped by category
     created_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
+
+class ExerciseEmbedding(BaseModel):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    name: str
+    source_id: str
+    embedding: List[float]  # vector(1536)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=datetime.utcnow)

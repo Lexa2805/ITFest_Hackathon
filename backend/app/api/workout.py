@@ -3,7 +3,7 @@ import logging
 from typing import List
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.api.fridge import get_current_user_id
@@ -11,7 +11,8 @@ from app.schemas.workout import (
     WorkoutPlanResponse,
     WorkoutCompletionCreate,
     WorkoutCompletionResponse,
-    ExerciseResponse
+    ExerciseResponse,
+    ExerciseRecommendationResponse,
 )
 from app.schemas.profile import ProfileResponse
 from app.services.profile_service import get_profile
@@ -23,10 +24,81 @@ from app.services.workout_service import (
     get_exercise_by_id,
     list_workout_completions,
 )
+from app.services.workout_rag_service import WorkoutRAGService
 from app.services.workout_split_service import generate_split
+from app.services.supabase_client import get_supabase
 
 router = APIRouter(prefix="/workout", tags=["workout"])
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+async def _get_latest_physical_state_score(user_id: str) -> int:
+    """Fetch the most recent physical_state_score from daily_checkins, default 70."""
+    try:
+        sb = await get_supabase()
+        result = await (
+            sb.table("daily_checkins")
+            .select("physical_state_score")
+            .eq("user_id", user_id)
+            .order("date", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if result.data and result.data[0].get("physical_state_score") is not None:
+            return int(result.data[0]["physical_state_score"])
+    except Exception:
+        logger.warning("Could not fetch physical_state_score for user %s, using default", user_id)
+    return 70
+
+
+# ---------------------------------------------------------------------------
+# Recommendations (RAG)
+# ---------------------------------------------------------------------------
+
+@router.get("/recommendations", response_model=list[ExerciseRecommendationResponse])
+async def get_workout_recommendations(
+    muscle_group: str | None = None,
+    limit: int = Query(default=10, ge=1, le=20),
+    difficulty: str | None = None,
+    user_id: str = Depends(get_current_user_id),
+) -> list[ExerciseRecommendationResponse]:
+    """Return personalised exercise recommendations via RAG."""
+    # 1. Fetch user profile
+    profile_data = await get_profile(user_id)
+    if not profile_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Profile not found. Please complete your profile first.",
+        )
+
+    # 2. Validate required fields
+    missing: list[str] = []
+    if not profile_data.get("experience_level"):
+        missing.append("experience_level")
+    if not profile_data.get("goal"):
+        missing.append("goal")
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Profile is missing required fields: {', '.join(missing)}",
+        )
+
+    # 3. Physical state score
+    physical_state_score = await _get_latest_physical_state_score(user_id)
+
+    # 4. RAG recommendations
+    rag_service = WorkoutRAGService()
+    return await rag_service.get_recommendations(
+        user_profile=profile_data,
+        physical_state_score=physical_state_score,
+        muscle_group=muscle_group,
+        difficulty=difficulty,
+        limit=limit,
+    )
 
 
 class GenerateWorkoutRequest(BaseModel):

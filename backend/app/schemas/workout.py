@@ -113,3 +113,19 @@ class WorkoutCompletionResponse(WorkoutCompletionCreate):
     id: UUID
     user_id: UUID
     completed_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Exercise Recommendation (RAG)
+# ---------------------------------------------------------------------------
+class ExerciseRecommendationResponse(BaseModel):
+    """Response model for RAG-powered exercise recommendations."""
+
+    id: UUID
+    name: str
+    target_muscle: str
+    equipment: list[str] = Field(default_factory=list)
+    execution_steps: list[str] = Field(default_factory=list)
+    image_url: str | None = None
+    difficulty: str
+    relevance_score: float

@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from app.api.fridge import get_current_user_id
 
 from app.schemas.nutrition import (
     NutritionGoalCreate,
     NutritionGoalResponse,
+    NutritionDailySummaryResponse,
     RecipeResponse,
     DailyLogResponse,
     ShoppingListResponse
 )
-from app.services import nutrition_service, recipe_service, shopping_service
+from app.services import nutrition_service, nutrition_summary_service, recipe_service, shopping_service
 
 router = APIRouter(prefix="/nutrition", tags=["nutrition"])
 
@@ -78,6 +79,18 @@ async def get_today_log(user_id: str = Depends(get_current_user_id)):
 @router.get("/log/history", response_model=list[DailyLogResponse], summary="Get the last 7 days of logs")
 async def get_history(user_id: str = Depends(get_current_user_id)):
     return await nutrition_service.get_history_logs(user_id)
+
+
+# ==========================================
+# Daily Summary (Dashboard)
+# ==========================================
+
+@router.get("/daily-summary", response_model=NutritionDailySummaryResponse, summary="Get today's nutrition summary")
+async def get_nutrition_daily_summary(
+    timezone: str = Query(default="UTC"),
+    user_id: str = Depends(get_current_user_id),
+) -> NutritionDailySummaryResponse:
+    return await nutrition_summary_service.get_daily_summary(user_id, timezone)
 
 
 # ==========================================

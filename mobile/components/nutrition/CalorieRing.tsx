@@ -17,6 +17,8 @@ export function CalorieRing({ consumed, target }: CalorieRingProps) {
   const remaining = Math.max(target - consumed, 0);
   const ratio = target > 0 ? Math.min(consumed / target, 1) : 0;
   const strokeDashoffset = CIRCUMFERENCE * (1 - ratio);
+  const isOver = consumed > target && target > 0;
+  const ringColor = isOver ? '#FF6B6B' : theme.colors.green.primary;
 
   return (
     <View style={styles.container}>
@@ -35,7 +37,7 @@ export function CalorieRing({ consumed, target }: CalorieRingProps) {
           cx={SIZE / 2}
           cy={SIZE / 2}
           r={RADIUS}
-          stroke={theme.colors.green.primary}
+          stroke={ringColor}
           strokeWidth={STROKE_WIDTH}
           fill="none"
           strokeLinecap="round"
@@ -46,8 +48,10 @@ export function CalorieRing({ consumed, target }: CalorieRingProps) {
         />
       </Svg>
       <View style={styles.centerLabel}>
-        <Text style={styles.remainingNumber}>{remaining}</Text>
-        <Text style={styles.remainingText}>remaining</Text>
+        <Text style={[styles.remainingNumber, isOver && { color: '#FF6B6B' }]}>
+          {isOver ? `+${consumed - target}` : remaining}
+        </Text>
+        <Text style={styles.remainingText}>{isOver ? 'over' : 'remaining'}</Text>
       </View>
     </View>
   );

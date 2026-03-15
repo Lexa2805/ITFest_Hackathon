@@ -171,6 +171,7 @@ export interface DailySummaryResponse {
   protein: { consumed: number; target: number };
   fat: { consumed: number; target: number };
   carbs: { consumed: number; target: number };
+  water: { consumed: number; target: number };
   remaining_kcal: number;
   status: "On track" | "Under eating" | "Over eating";
 }
@@ -304,6 +305,14 @@ export async function logMeal(payload: MealLogRequest): Promise<MealLogResponse>
 
 export async function getDailySummary(userId: string, date: string): Promise<DailySummaryResponse> {
   const { data } = await api.get<DailySummaryResponse>(`/nutrition-agent/daily-summary/${userId}/${date}`);
+  return data;
+}
+
+export async function getNutritionDailySummary(): Promise<DailySummaryResponse> {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const { data } = await api.get<DailySummaryResponse>("/nutrition/daily-summary", {
+    params: { timezone },
+  });
   return data;
 }
 

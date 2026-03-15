@@ -5,7 +5,6 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     ImageBackground,
     Modal,
@@ -36,7 +35,7 @@ import {
     MealPlanResponse,
     PlannedMeal,
     generateMealPlan,
-    getDailySummary,
+    getNutritionDailySummary,
     getLatestMealPlan,
     lookupFoodByBarcode,
     logMeal,
@@ -132,7 +131,7 @@ export default function NutritionScreen() {
         setLoading(true);
         try {
             const [summaryResult, planResult] = await Promise.allSettled([
-                getDailySummary(userId, todayIso),
+                getNutritionDailySummary(),
                 getLatestMealPlan(),
             ]);
 
@@ -149,7 +148,7 @@ export default function NutritionScreen() {
         } finally {
             setLoading(false);
         }
-    }, [todayIso, userId]);
+    }, [userId]);
 
     React.useEffect(() => {
         void loadAll();
@@ -228,7 +227,7 @@ export default function NutritionScreen() {
             await logMeal(payload);
             setMealForm(INITIAL_FORM);
             setShowLogMealSheet(false);
-            setDailySummary(await getDailySummary(userId, todayIso));
+            setDailySummary(await getNutritionDailySummary());
         } catch (unknownError) {
             setError('Failed to log meal.');
             console.error(unknownError);
@@ -298,8 +297,21 @@ export default function NutritionScreen() {
 
     if (loading) {
         return (
-            <SafeAreaView style={[styles.safeArea, styles.loadingState]}>
-                <ActivityIndicator color={theme.colors.green.primary} size="large" />
+            <SafeAreaView style={[styles.safeArea]}>
+                <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+                    <View style={styles.headerBlock}>
+                        <View style={styles.skeletonSmall} />
+                        <View style={styles.skeletonTitle} />
+                    </View>
+                    <View style={[styles.heroCard, { alignItems: 'center', justifyContent: 'center', minHeight: 160 }]}>
+                        <View style={styles.skeletonRing} />
+                    </View>
+                    <View style={styles.macroWrap}>
+                        <View style={styles.skeletonBar} />
+                        <View style={styles.skeletonBar} />
+                        <View style={styles.skeletonBar} />
+                    </View>
+                </ScrollView>
             </SafeAreaView>
         );
     }
@@ -443,7 +455,7 @@ export default function NutritionScreen() {
                 <PhotoMealCapture
                     onComplete={() => {
                         if (userId) {
-                            getDailySummary(userId, todayIso).then(setDailySummary).catch(() => { });
+                            getNutritionDailySummary().then(setDailySummary).catch(() => { });
                         }
                     }}
                 />
@@ -581,6 +593,29 @@ const styles = StyleSheet.create({
     loadingState: {
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    skeletonSmall: {
+        width: 60,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: theme.colors.background.secondary,
+    },
+    skeletonTitle: {
+        width: 140,
+        height: 28,
+        borderRadius: 8,
+        backgroundColor: theme.colors.background.secondary,
+    },
+    skeletonRing: {
+        width: 150,
+        height: 150,
+        borderRadius: 75,
+        backgroundColor: theme.colors.background.main,
+    },
+    skeletonBar: {
+        height: 24,
+        borderRadius: 8,
+        backgroundColor: theme.colors.background.main,
     },
     screen: {
         flex: 1,

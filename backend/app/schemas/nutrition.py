@@ -1,5 +1,5 @@
 from datetime import date as dt_date, datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -101,3 +101,27 @@ class ShoppingListResponse(BaseModel):
     items: List[ShoppingListItem]
     status: str
     generated_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Nutrition Daily Summary (Dashboard)
+# ---------------------------------------------------------------------------
+class MacroSummary(BaseModel):
+    """Consumed vs target for a single macro."""
+
+    consumed: int
+    target: int
+
+
+class NutritionDailySummaryResponse(BaseModel):
+    """Daily nutrition summary with water tracking for the dashboard."""
+
+    date: dt_date
+    meals: List[dict]  # lightweight meal entries
+    kcal: MacroSummary
+    protein: MacroSummary
+    fat: MacroSummary
+    carbs: MacroSummary
+    water: MacroSummary
+    remaining_kcal: int
+    status: Literal["On track", "Under eating", "Over eating"]

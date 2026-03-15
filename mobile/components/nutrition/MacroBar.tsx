@@ -50,6 +50,7 @@ function MacroIcon({ label }: { label: string }) {
 
 export function MacroBar({ label, consumed, target }: MacroBarProps) {
   const ratio = target > 0 ? Math.min(consumed / target, 1) : 0;
+  const isOver = consumed > target && target > 0;
 
   return (
     <View style={styles.row}>
@@ -60,14 +61,14 @@ export function MacroBar({ label, consumed, target }: MacroBarProps) {
       <View style={styles.trackWrap}>
         <View style={styles.track}>
           <LinearGradient
-            colors={[theme.colors.green.primary, theme.colors.chart.dark]}
+            colors={isOver ? ['#FF6B6B', '#FF8E53'] : [theme.colors.green.primary, theme.colors.chart.dark]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[styles.fill, { width: `${ratio * 100}%` }]}
           />
         </View>
       </View>
-      <Text style={styles.value}>
+      <Text style={[styles.value, isOver && styles.valueOver]}>
         {consumed}g / {target}g
       </Text>
     </View>
@@ -110,5 +111,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     minWidth: 80,
     textAlign: 'right',
+  },
+  valueOver: {
+    color: '#FF6B6B',
   },
 });

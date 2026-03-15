@@ -88,3 +88,31 @@ export async function fetchWorkoutCompletions(planId: string): Promise<WorkoutCo
     const { data } = await api.get<WorkoutCompletion[]>(`/workout/completions/${planId}`);
     return data;
 }
+
+// ── Workout RAG Recommendations ──────────────────────────────
+
+export interface ExerciseRecommendation {
+    id: string;
+    name: string;
+    target_muscle: string;
+    equipment: string[];
+    execution_steps: string[];
+    image_url: string | null;
+    difficulty: string;
+    relevance_score: number;
+}
+
+export async function getWorkoutRecommendations(params?: {
+    muscle_group?: string;
+    limit?: number;
+    difficulty?: string;
+}): Promise<ExerciseRecommendation[]> {
+    const { data } = await api.get<ExerciseRecommendation[]>("/workout/recommendations", {
+        params: {
+            muscle_group: params?.muscle_group,
+            limit: params?.limit,
+            difficulty: params?.difficulty,
+        },
+    });
+    return data;
+}

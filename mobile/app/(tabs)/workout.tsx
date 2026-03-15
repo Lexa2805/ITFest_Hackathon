@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
@@ -9,7 +9,8 @@ import { ExerciseDetailModal } from "@/components/workout/ExerciseDetailModal";
 import { WeeklyScheduleSelector } from "@/components/workout/WeeklyScheduleSelector";
 import { useWorkoutContext } from "@/contexts/WorkoutContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { fetchExerciseDetails } from "@/services/workoutApi";
+import { fetchExerciseDetails, getWorkoutRecommendations } from "@/services/workoutApi";
+import { SkeletonCard } from "@/components/recipe/SkeletonCard";
 import {
     createScheduleFromDayStates,
     createScheduleFromPreset,
@@ -19,6 +20,23 @@ import {
 import { recommendWorkoutPlan } from "@/services/workoutPlanGenerator";
 import { theme } from "@/constants/theme";
 import type { DailyWorkout, DayTrainingState, Exercise, WeeklyTrainingSchedule } from "@/types/workout";
+import type { ExerciseRecommendation } from "@/services/workoutApi";
+
+function mapRecommendationToExercise(rec: ExerciseRecommendation): Exercise {
+    return {
+        id: rec.id,
+        name: rec.name,
+        muscle_group: rec.target_muscle,
+        image: rec.image_url,
+        demonstration_url: null,
+        execution_steps: rec.execution_steps,
+        sets: 3,
+        reps: 10,
+        rest_seconds: 60,
+        difficulty: rec.difficulty as Exercise["difficulty"],
+        equipment: rec.equipment,
+    };
+}
 
 function addDays(isoDate: string, offset: number): string {
     const base = new Date(isoDate);
@@ -50,10 +68,42 @@ export default function WorkoutScreen() {
     const [trainingSchedule, setTrainingSchedule] = useState<WeeklyTrainingSchedule | null>(null);
     const [savingSchedule, setSavingSchedule] = useState(false);
 
+    // ── RAG Recommendations state ──
+    const [recommendations, setRecommendations] = useState<ExerciseRecommendation[]>([]);
+    const [recsLoading, setRecsLoading] = useState(false);
+    const [recsError, setRecsError] = useState<string | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
+
     const hasRequiredWorkoutProfile = useMemo(
         () => Boolean(profile?.experience_level && profile?.available_days_per_week),
         [profile?.experience_level, profile?.available_days_per_week]
     );
+
+    const loadRecommendations = useCallback(async () => {
+        setRecsLoading(true);
+        setRecsError(null);
+        try {
+            const data = await getWorkoutRecommendations({ limit: 10 });
+            setRecommendations(data);
+        } catch {
+            setRecsError("Couldn't load recommendations");
+        } finally {
+            setRecsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadRecommendations();
+    }, [loadRecommendations]);
+
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await loadRecommendations();
+        } finally {
+            setRefreshing(false);
+        }
+    }, [loadRecommendations]);
 
     const displayWorkouts: DailyWorkout[] = useMemo(() => {
         if (!currentPlan) {
@@ -278,7 +328,18 @@ export default function WorkoutScreen() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                contentContainerStyle={styles.content}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        tintColor={theme.colors.green.primary}
+                        colors={[theme.colors.green.primary]}
+                    />
+                }
+            >
                 <View style={styles.heroCard}>
                     <Text style={styles.title}>Weekly Workout</Text>
                     <Text style={styles.progress}>{`${completedCount}/${totalWorkoutDays} workouts completed`}</Text>
@@ -441,6 +502,43 @@ export default function WorkoutScreen() {
                         )}
                     </>
                 ) : null}
+
+                {/* ── Recommended for you ── */}
+                <View style={styles.recsSection}>
+                    <Text style={styles.recsSectionTitle}>Recommended for you</Text>
+
+                    {recsLoading && !recommendations.length ? (
+                        <>
+                            <SkeletonCard />
+                            <SkeletonCard />
+                            <SkeletonCard />
+                        </>
+                    ) : recsError && !recommendations.length ? (
+                        <View style={styles.recsErrorCard}>
+                            <Text style={styles.recsErrorText}>{recsError}</Text>
+                            <Pressable
+                                style={styles.recsRetryButton}
+                                onPress={() => void loadRecommendations()}
+                                accessibilityRole="button"
+                                accessibilityLabel="Retry loading recommendations"
+                            >
+                                <Text style={styles.recsRetryText}>Retry</Text>
+                            </Pressable>
+                        </View>
+                    ) : recommendations.length > 0 ? (
+                        recommendations.map((rec) => (
+                            <ExerciseCard
+                                key={rec.id}
+                                exercise={mapRecommendationToExercise(rec)}
+                                onPress={openExerciseDetails}
+                            />
+                        ))
+                    ) : (
+                        <View style={styles.messageCard}>
+                            <Text style={styles.messageBody}>No recommendations available yet.</Text>
+                        </View>
+                    )}
+                </View>
             </ScrollView>
 
             <ExerciseDetailModal
@@ -680,5 +778,42 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         color: theme.colors.text.secondary,
         textTransform: "capitalize",
+    },
+    recsSection: {
+        gap: 12,
+        marginTop: 8,
+    },
+    recsSectionTitle: {
+        fontSize: 20,
+        fontWeight: "800",
+        color: theme.colors.text.primary,
+    },
+    recsErrorCard: {
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.lg,
+        padding: 14,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: "rgba(255,82,82,0.35)",
+        alignItems: "flex-start",
+    },
+    recsErrorText: {
+        fontSize: 13,
+        fontWeight: "600",
+        color: theme.colors.error,
+    },
+    recsRetryButton: {
+        minHeight: 38,
+        borderRadius: theme.radius.full,
+        paddingHorizontal: 12,
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor: theme.colors.error,
+        backgroundColor: "rgba(255,82,82,0.08)",
+    },
+    recsRetryText: {
+        fontSize: 12,
+        fontWeight: "700",
+        color: theme.colors.error,
     },
 });
