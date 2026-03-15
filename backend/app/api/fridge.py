@@ -122,12 +122,13 @@ async def update_item(
 @router.delete(
     "/items/{item_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Delete a fridge item",
 )
 async def delete_item(
     item_id: UUID,
     user_id: str = Depends(get_current_user_id),
-) -> None:
+):
     await fridge_service.delete_item(user_id, item_id)
 
 

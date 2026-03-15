@@ -122,6 +122,15 @@ export default function TabLayout() {
       />
       <Tabs.Screen name="nutrition.mock" options={{ href: null }} />
       <Tabs.Screen
+        name="squads"
+        options={{
+          title: 'Squads',
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="people" color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',

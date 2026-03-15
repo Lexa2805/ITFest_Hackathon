@@ -63,12 +63,12 @@ async def get_user_fridge(user_id: UUID, current_user_id: str = Depends(get_curr
     return await nutrition_fridge_service.get_ingredients(user_id=current_user_id)
 
 
-@router.delete("/fridge/{user_id}/{ingredient_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/fridge/{user_id}/{ingredient_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def remove_fridge_ingredient(
     user_id: UUID,
     ingredient_id: UUID,
     current_user_id: str = Depends(get_current_user_id),
-) -> None:
+):
     """Remove one ingredient from the user's fridge."""
     if str(user_id) != current_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only modify your own fridge.")
