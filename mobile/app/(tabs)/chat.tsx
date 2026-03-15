@@ -30,10 +30,16 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 export default function ChatScreen() {
-  const {
-    sessions, activeSessionLocalId, messages, streaming, error,
-    hydrateSessions, createSession, selectSession, deleteSession, sendMessage,
-  } = useChatStore();
+  const sessions = useChatStore((s) => s.sessions);
+  const activeSessionLocalId = useChatStore((s) => s.activeSessionLocalId);
+  const messages = useChatStore((s) => s.messages);
+  const streaming = useChatStore((s) => s.streaming);
+  const error = useChatStore((s) => s.error);
+  const hydrateSessions = useChatStore((s) => s.hydrateSessions);
+  const createSession = useChatStore((s) => s.createSession);
+  const selectSession = useChatStore((s) => s.selectSession);
+  const deleteSession = useChatStore((s) => s.deleteSession);
+  const sendMessage = useChatStore((s) => s.sendMessage);
   const [input, setInput] = useState('');
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
@@ -93,21 +99,22 @@ export default function ChatScreen() {
       </ScrollView>
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}>
-        {messages.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}><Ionicons name="chatbubbles-outline" size={48} color={theme.colors.green.primary} /></View>
-            <Text style={styles.emptyTitle}>Nutrition Assistant</Text>
-            <Text style={styles.emptyBody}>Ask about meal ideas, log your food, get workout recommendations, or seek diet advice.</Text>
-          </View>
-        ) : (
-          <FlatList
-            ref={flatListRef} style={{ flex: 1 }} data={messages}
-            keyExtractor={(_, i) => String(i)} renderItem={({ item }) => <MessageBubble message={item} />}
-            contentContainerStyle={styles.messageList} keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          />
-        )}
+        <FlatList
+          ref={flatListRef} style={{ flex: 1 }} data={messages}
+          extraData={messages.length}
+          keyExtractor={(_, i) => String(i)} renderItem={({ item }) => <MessageBubble message={item} />}
+          contentContainerStyle={messages.length === 0 ? styles.emptyListContent : styles.messageList}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => { if (messages.length > 0) flatListRef.current?.scrollToEnd({ animated: true }); }}
+          onLayout={() => { if (messages.length > 0) flatListRef.current?.scrollToEnd({ animated: false }); }}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}><Ionicons name="chatbubbles-outline" size={48} color={theme.colors.green.primary} /></View>
+              <Text style={styles.emptyTitle}>Nutrition Assistant</Text>
+              <Text style={styles.emptyBody}>Ask about meal ideas, log your food, get workout recommendations, or seek diet advice.</Text>
+            </View>
+          }
+        />
 
         <View style={[styles.composerWrap, { paddingBottom: isKeyboardVisible ? 12 : 90 }]}>
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -164,6 +171,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontWeight: '700', color: theme.colors.text.primary },
   emptyBody: { fontSize: 14, color: theme.colors.text.muted, textAlign: 'center', lineHeight: 20 },
   messageList: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  emptyListContent: { flexGrow: 1, justifyContent: 'center' },
   bubbleRow: { flexDirection: 'row', justifyContent: 'flex-start', marginBottom: 8 },
   bubbleRowUser: { justifyContent: 'flex-end' },
   bubble: { maxWidth: '85%', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 12 },

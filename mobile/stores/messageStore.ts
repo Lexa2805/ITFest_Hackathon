@@ -112,12 +112,15 @@ export const useMessageStore = create<MessageState>((set, get) => ({
           filter: `chat_room_id=eq.${roomId}`,
         },
         (payload) => {
-          const newMsg = payload.new as Message;
-          set((s) => {
-            // Deduplicate — the message may already exist from an optimistic send
-            if (s.messages.some((m) => m.id === newMsg.id)) return s;
-            return { messages: [...s.messages, newMsg] };
-          });
+          const newRow = payload.new as Record<string, unknown>;
+          const newId = newRow.id as string;
+
+          // If this message already exists (optimistic send), skip
+          if (get().messages.some((m) => m.id === newId)) return;
+
+          // Re-fetch full history so messages include sender_display_name
+          // (the raw Realtime row doesn't have it — it's computed server-side)
+          get().fetchHistory(roomId);
         }
       )
       .subscribe();
