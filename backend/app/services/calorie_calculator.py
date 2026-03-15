@@ -104,9 +104,20 @@ async def save_targets_to_profile(user_id: str, results: CalorieCalculationRespo
         "carbs_target_g": results.carbs_g,
     }
     response = await supabase.table("profiles").upsert(payload, on_conflict="user_id").execute()
-    if not response.data:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save calorie targets to profile.",
-        )
-    return response.data[0]
+    if response.data:
+        return response.data[0]
+
+    fallback = await (
+        supabase.table("profiles")
+        .select("*")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if fallback.data:
+        return fallback.data[0]
+
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Failed to save calorie targets to profile.",
+    )

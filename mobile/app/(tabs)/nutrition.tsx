@@ -38,6 +38,7 @@ import {
     getNutritionDailySummary,
     getLatestMealPlan,
     lookupFoodByBarcode,
+    deleteLoggedMeal,
     logMeal,
 } from '@/services/nutritionApi';
 import { useAuthStore } from '@/stores/authStore';
@@ -48,6 +49,30 @@ import { BentoCard } from '@/components/ui/BentoCard';
 
 type NutritionTab = 'main' | 'fridge';
 type MealMoment = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+type PlanSection = 'breakfast' | 'lunch' | 'dinner' | 'snacks';
+
+const DRINK_KEYWORDS = ['drink', 'beverage', 'soda', 'cola', 'juice', 'smoothie', 'shake', 'tea', 'coffee', 'water', 'pepsi', 'coke', 'fanta', 'sprite'];
+
+function isDrinkLikeMealName(mealName: string): boolean {
+    const normalized = mealName.trim().toLowerCase();
+    if (!normalized) return false;
+    return DRINK_KEYWORDS.some((keyword) => normalized.includes(keyword));
+}
+
+function sectionTitle(section: PlanSection): string {
+    switch (section) {
+        case 'breakfast':
+            return 'Breakfast ideas';
+        case 'lunch':
+            return 'Lunch ideas';
+        case 'dinner':
+            return 'Dinner ideas';
+        case 'snacks':
+            return 'Snack ideas';
+        default:
+            return 'Ideas';
+    }
+}
 
 interface MealFormState {
     meal_name: string;
@@ -109,6 +134,7 @@ export default function NutritionScreen() {
     const [barcodeValue, setBarcodeValue] = useState('');
     const [barcodeLookupLoading, setBarcodeLookupLoading] = useState(false);
     const [scannerLocked, setScannerLocked] = useState(false);
+    const [deletingMealId, setDeletingMealId] = useState<string | null>(null);
     const [mealForm, setMealForm] = useState<MealFormState>(INITIAL_FORM);
     const [ingredientDraftName, setIngredientDraftName] = useState('');
     const [ingredientDraftGrams, setIngredientDraftGrams] = useState('0');
@@ -118,7 +144,24 @@ export default function NutritionScreen() {
 
     const plannedMealsFlat = useMemo(() => {
         if (!mealPlan) return [] as PlannedMeal[];
-        return [...mealPlan.breakfast, ...mealPlan.lunch, ...mealPlan.dinner, ...mealPlan.snacks];
+        return [...mealPlan.breakfast, ...mealPlan.lunch, ...mealPlan.dinner, ...mealPlan.snacks].filter(
+            (meal) => !isDrinkLikeMealName(meal.meal_name)
+        );
+    }, [mealPlan]);
+
+    const plannedMealsBySection = useMemo(() => {
+        if (!mealPlan) {
+            return [] as Array<{ section: PlanSection; label: string; meals: PlannedMeal[] }>;
+        }
+
+        const grouped: Array<{ section: PlanSection; label: string; meals: PlannedMeal[] }> = [
+            { section: 'breakfast', label: sectionTitle('breakfast'), meals: mealPlan.breakfast.filter((meal) => !isDrinkLikeMealName(meal.meal_name)) },
+            { section: 'lunch', label: sectionTitle('lunch'), meals: mealPlan.lunch.filter((meal) => !isDrinkLikeMealName(meal.meal_name)) },
+            { section: 'dinner', label: sectionTitle('dinner'), meals: mealPlan.dinner.filter((meal) => !isDrinkLikeMealName(meal.meal_name)) },
+            { section: 'snacks', label: sectionTitle('snacks'), meals: mealPlan.snacks.filter((meal) => !isDrinkLikeMealName(meal.meal_name)) },
+        ];
+
+        return grouped.filter((entry) => entry.meals.length > 0);
     }, [mealPlan]);
 
     const loadAll = React.useCallback(async () => {
@@ -163,10 +206,15 @@ export default function NutritionScreen() {
     const handleGeneratePlan = async () => {
         if (!userId) return;
 
-        const kcalTarget = dailySummary?.kcal.target || 2000;
-        const proteinTarget = dailySummary?.protein.target || 130;
-        const fatTarget = dailySummary?.fat.target || 70;
-        const carbsTarget = dailySummary?.carbs.target || 220;
+        const kcalTarget = dailySummary?.kcal.target ?? 0;
+        const proteinTarget = dailySummary?.protein.target ?? 0;
+        const fatTarget = dailySummary?.fat.target ?? 0;
+        const carbsTarget = dailySummary?.carbs.target ?? 0;
+
+        if (kcalTarget <= 0 || proteinTarget <= 0 || fatTarget <= 0 || carbsTarget <= 0) {
+            setError('Complete your profile (weight, height, age, activity level, and goal) to calculate personal kcal/macros first.');
+            return;
+        }
 
         try {
             const generated = await generateMealPlan({
@@ -295,6 +343,31 @@ export default function NutritionScreen() {
         void handleLookupBarcode(data);
     };
 
+    const handleDeleteMeal = (mealId: string, mealName: string) => {
+        Alert.alert('Delete meal', `Remove "${mealName}" from your log?`, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: () => {
+                    setDeletingMealId(mealId);
+                    setError(null);
+                    void (async () => {
+                        try {
+                            await deleteLoggedMeal(mealId);
+                            setDailySummary(await getNutritionDailySummary());
+                        } catch (unknownError) {
+                            setError('Failed to delete meal.');
+                            console.error(unknownError);
+                        } finally {
+                            setDeletingMealId((current) => (current === mealId ? null : current));
+                        }
+                    })();
+                },
+            },
+        ]);
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={[styles.safeArea]}>
@@ -420,13 +493,28 @@ export default function NutritionScreen() {
                 {/* ── Recipe suggestions ── */}
                 <Animated.View entering={FadeInDown.duration(500).delay(250)}>
                     <Text style={styles.sectionTitle}>Recipe suggestions</Text>
-                    <View style={styles.recipeList}>
-                        {(plannedMealsFlat.length > 0 ? plannedMealsFlat : []).slice(0, 6).map((meal, index) => (
-                            <RecipeHeroCard key={`${meal.meal_name}-${index}`} meal={meal} index={index} onPick={() => handlePickFromPlan(meal)} />
+                    <View style={styles.recipeCategoryList}>
+                        {plannedMealsBySection.map((group, groupIndex) => (
+                            <View key={group.section} style={styles.recipeCategorySection}>
+                                <View style={styles.recipeCategoryHeader}>
+                                    <Text style={styles.recipeCategoryTitle}>{group.label}</Text>
+                                    <Text style={styles.recipeCategoryCount}>{group.meals.length}</Text>
+                                </View>
+                                <View style={styles.recipeList}>
+                                    {group.meals.map((meal, index) => (
+                                        <RecipeHeroCard
+                                            key={`${group.section}-${meal.meal_name}-${index}`}
+                                            meal={meal}
+                                            index={groupIndex * 10 + index}
+                                            onPick={() => handlePickFromPlan(meal)}
+                                        />
+                                    ))}
+                                </View>
+                            </View>
                         ))}
-                        {plannedMealsFlat.length === 0 ? (
+                        {plannedMealsBySection.length === 0 ? (
                             <View style={styles.emptyCard}>
-                                <Text style={styles.emptyText}>Generate a meal plan to see recipe cards.</Text>
+                                <Text style={styles.emptyText}>Generate a meal plan to see food-only recipe cards.</Text>
                             </View>
                         ) : null}
                     </View>
@@ -471,7 +559,18 @@ export default function NutritionScreen() {
                             ) : (
                                 meals.map((meal) => (
                                     <View key={meal.id} style={styles.loggedMealRow}>
-                                        <Text style={styles.loggedMealName}>{meal.meal_name}</Text>
+                                        <View style={styles.loggedMealHeader}>
+                                            <Text style={styles.loggedMealName}>{meal.meal_name}</Text>
+                                            <Pressable
+                                                onPress={() => handleDeleteMeal(meal.id, meal.meal_name)}
+                                                disabled={deletingMealId === meal.id}
+                                                hitSlop={8}
+                                            >
+                                                <Text style={styles.loggedMealDelete}>
+                                                    {deletingMealId === meal.id ? '...' : 'Delete'}
+                                                </Text>
+                                            </Pressable>
+                                        </View>
                                         <Text style={styles.loggedMealMeta}>{meal.kcal} kcal · P {meal.protein} · F {meal.fat} · C {meal.carbs}</Text>
                                     </View>
                                 ))
@@ -732,6 +831,29 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
     },
+    recipeCategoryList: {
+        gap: 14,
+    },
+    recipeCategorySection: {
+        gap: 8,
+    },
+    recipeCategoryHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    recipeCategoryTitle: {
+        color: theme.colors.green.primary,
+        fontSize: 14,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+    },
+    recipeCategoryCount: {
+        color: theme.colors.text.muted,
+        fontSize: 12,
+        fontWeight: '700',
+    },
     recipeList: {
         gap: 10,
     },
@@ -793,9 +915,21 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.ui.divider,
     },
+    loggedMealHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+    },
     loggedMealName: {
+        flex: 1,
         color: theme.colors.text.primary,
         fontSize: 14,
+        fontWeight: '700',
+    },
+    loggedMealDelete: {
+        color: theme.colors.error,
+        fontSize: 12,
         fontWeight: '700',
     },
     loggedMealMeta: {

@@ -198,9 +198,10 @@ def _pick_exercises_for_focus(
     experience: str | None,
     rep_range: tuple[int, int],
     target_count: int,
+    used_ids: set[str] | None = None,
 ) -> list[ExerciseResponse]:
     selected: list[ExerciseResponse] = []
-    seen_ids: set[str] = set()
+    seen_ids: set[str] = set(used_ids or set())
     muscle_groups = MUSCLE_TARGETS.get(focus, ["full body"])
     difficulties = _difficulty_order(experience)
 
@@ -218,6 +219,8 @@ def _pick_exercises_for_focus(
 
                 selected.append(adjusted)
                 seen_ids.add(exercise_id)
+                if used_ids is not None:
+                    used_ids.add(exercise_id)
                 if len(selected) >= target_count:
                     return selected
 
@@ -228,9 +231,102 @@ def _pick_exercises_for_focus(
     for difficulty in fallback_difficulties:
         fallback_matches = get_exercises_by_muscle_group("full body", difficulty)
         for exercise in fallback_matches:
+            exercise_id = str(exercise.id)
+            if exercise_id in seen_ids:
+                continue
+
             selected.append(exercise)
+            seen_ids.add(exercise_id)
+            if used_ids is not None:
+                used_ids.add(exercise_id)
             if len(selected) >= target_count:
                 return selected
+
+    return selected
+
+
+def _count_available_unique_exercises(
+    focus: str,
+    experience: str | None,
+    used_ids: set[str] | None = None,
+) -> int:
+    seen_ids: set[str] = set(used_ids or set())
+    available = 0
+    muscle_groups = MUSCLE_TARGETS.get(focus, ["full body"])
+    difficulties = _difficulty_order(experience)
+
+    for muscle in muscle_groups:
+        for difficulty in difficulties:
+            matches = get_exercises_by_muscle_group(muscle, difficulty)
+            for exercise in matches:
+                exercise_id = str(exercise.id)
+                if exercise_id in seen_ids:
+                    continue
+                seen_ids.add(exercise_id)
+                available += 1
+
+    if available > 0:
+        return available
+
+    for difficulty in difficulties:
+        fallback_matches = get_exercises_by_muscle_group("full body", difficulty)
+        for exercise in fallback_matches:
+            exercise_id = str(exercise.id)
+            if exercise_id in seen_ids:
+                continue
+            seen_ids.add(exercise_id)
+            available += 1
+
+    return available
+
+
+def _top_up_exercises_for_minimum(
+    focus: str,
+    experience: str | None,
+    rep_range: tuple[int, int],
+    existing_exercises: list[ExerciseResponse],
+    min_count: int,
+) -> list[ExerciseResponse]:
+    if len(existing_exercises) >= min_count:
+        return existing_exercises
+
+    selected: list[ExerciseResponse] = list(existing_exercises)
+    existing_ids = {str(exercise.id) for exercise in selected}
+    muscle_groups = MUSCLE_TARGETS.get(focus, ["full body"])
+    difficulties = _difficulty_order(experience)
+
+    def append_from_matches(matches: list[ExerciseResponse]) -> bool:
+        for candidate in matches:
+            candidate_id = str(candidate.id)
+            if candidate_id in existing_ids:
+                continue
+
+            rep_span = rep_range[1] - rep_range[0]
+            rep_value = rep_range[0] + (len(selected) % (rep_span + 1 if rep_span >= 0 else 1))
+            selected.append(candidate.model_copy(update={"reps": rep_value}))
+            existing_ids.add(candidate_id)
+
+            if len(selected) >= min_count:
+                return True
+        return False
+
+    for muscle in muscle_groups:
+        for difficulty in difficulties:
+            matches = get_exercises_by_muscle_group(muscle, difficulty)
+            if append_from_matches(matches):
+                return selected
+
+    for difficulty in difficulties:
+        fallback_matches = get_exercises_by_muscle_group("full body", difficulty)
+        if append_from_matches(fallback_matches):
+            return selected
+
+    if selected and len(selected) < min_count:
+        seed = selected[0]
+        while len(selected) < min_count:
+            rep_span = rep_range[1] - rep_range[0]
+            rep_value = rep_range[0] + (len(selected) % (rep_span + 1 if rep_span >= 0 else 1))
+            selected.append(seed.model_copy(update={"reps": rep_value}))
 
     return selected
 
@@ -268,6 +364,11 @@ def assign_exercises(
     recovery_day_lookup = set(
         day for day, state in (day_states or {}).items() if state == "recovery"
     )
+    used_exercise_ids: set[str] = set()
+    training_days_total = len(training_day_indices)
+    assigned_training_days = 0
+    min_exercises_per_day = 3
+    max_exercises_per_day = 4
 
     for day_index in range(7):
         if day_index not in training_day_lookup:
@@ -284,13 +385,51 @@ def assign_exercises(
 
         training_slot = training_day_indices.index(day_index)
         focus = pattern[training_slot % len(pattern)]
-        target_count = 6 if split_type == "full_body" else 5
+        remaining_days_including_current = max(1, training_days_total - assigned_training_days)
+        available_unique = _count_available_unique_exercises(
+            focus=focus,
+            experience=experience,
+            used_ids=used_exercise_ids,
+        )
+
+        if available_unique <= 0:
+            target_count = 0
+        else:
+            remaining_after_current = max(0, remaining_days_including_current - 1)
+            reserve_for_future_minimum = min_exercises_per_day * remaining_after_current
+
+            if available_unique > reserve_for_future_minimum:
+                max_for_current_without_starving_future = available_unique - reserve_for_future_minimum
+            else:
+                max_for_current_without_starving_future = 1
+
+            target_count = min(
+                max_exercises_per_day,
+                max_for_current_without_starving_future,
+                available_unique,
+            )
+
+            if available_unique >= min_exercises_per_day:
+                target_count = max(min_exercises_per_day, target_count)
+
+            target_count = max(1, target_count)
+
         exercises = _pick_exercises_for_focus(
             focus=focus,
             experience=experience,
             rep_range=rep_range,
             target_count=target_count,
+            used_ids=used_exercise_ids,
         )
+
+        exercises = _top_up_exercises_for_minimum(
+            focus=focus,
+            experience=experience,
+            rep_range=rep_range,
+            existing_exercises=exercises,
+            min_count=min_exercises_per_day,
+        )
+        assigned_training_days += 1
 
         daily_workouts.append(
             DailyWorkout(

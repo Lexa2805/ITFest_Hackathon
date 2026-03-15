@@ -1,16 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
-import { DayTabs } from "@/components/workout/DayTabs";
-import { ExerciseCard } from "@/components/workout/ExerciseCard";
-import { ExerciseDetailModal } from "@/components/workout/ExerciseDetailModal";
 import { WeeklyScheduleSelector } from "@/components/workout/WeeklyScheduleSelector";
 import { useWorkoutContext } from "@/contexts/WorkoutContext";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { fetchExerciseDetails, getWorkoutRecommendations } from "@/services/workoutApi";
-import { SkeletonCard } from "@/components/recipe/SkeletonCard";
 import {
     createScheduleFromDayStates,
     createScheduleFromPreset,
@@ -20,28 +15,21 @@ import {
 import { recommendWorkoutPlan } from "@/services/workoutPlanGenerator";
 import { theme } from "@/constants/theme";
 import type { DailyWorkout, DayTrainingState, Exercise, WeeklyTrainingSchedule } from "@/types/workout";
-import type { ExerciseRecommendation } from "@/services/workoutApi";
 
-function mapRecommendationToExercise(rec: ExerciseRecommendation): Exercise {
-    return {
-        id: rec.id,
-        name: rec.name,
-        muscle_group: rec.target_muscle,
-        image: rec.image_url,
-        demonstration_url: null,
-        execution_steps: rec.execution_steps,
-        sets: 3,
-        reps: 10,
-        rest_seconds: 60,
-        difficulty: rec.difficulty as Exercise["difficulty"],
-        equipment: rec.equipment,
-    };
-}
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function addDays(isoDate: string, offset: number): string {
     const base = new Date(isoDate);
     base.setDate(base.getDate() + offset);
     return base.toISOString().slice(0, 10);
+}
+
+function buildExerciseExplanation(exercise: Exercise): string[] {
+    if (exercise.execution_steps.length > 0) {
+        return exercise.execution_steps;
+    }
+
+    return [`Do ${exercise.sets} sets of ${exercise.reps} reps with ${exercise.rest_seconds}s rest.`];
 }
 
 export default function WorkoutScreen() {
@@ -62,48 +50,13 @@ export default function WorkoutScreen() {
         undoWorkout,
     } = useWorkoutContext();
 
-    const [modalVisible, setModalVisible] = useState(false);
-    const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
-    const [activeExerciseIndex, setActiveExerciseIndex] = useState(0);
     const [trainingSchedule, setTrainingSchedule] = useState<WeeklyTrainingSchedule | null>(null);
     const [savingSchedule, setSavingSchedule] = useState(false);
-
-    // ── RAG Recommendations state ──
-    const [recommendations, setRecommendations] = useState<ExerciseRecommendation[]>([]);
-    const [recsLoading, setRecsLoading] = useState(false);
-    const [recsError, setRecsError] = useState<string | null>(null);
-    const [refreshing, setRefreshing] = useState(false);
 
     const hasRequiredWorkoutProfile = useMemo(
         () => Boolean(profile?.experience_level && profile?.available_days_per_week),
         [profile?.experience_level, profile?.available_days_per_week]
     );
-
-    const loadRecommendations = useCallback(async () => {
-        setRecsLoading(true);
-        setRecsError(null);
-        try {
-            const data = await getWorkoutRecommendations({ limit: 10 });
-            setRecommendations(data);
-        } catch {
-            setRecsError("Couldn't load recommendations");
-        } finally {
-            setRecsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        void loadRecommendations();
-    }, [loadRecommendations]);
-
-    const handleRefresh = useCallback(async () => {
-        setRefreshing(true);
-        try {
-            await loadRecommendations();
-        } finally {
-            setRefreshing(false);
-        }
-    }, [loadRecommendations]);
 
     const displayWorkouts: DailyWorkout[] = useMemo(() => {
         if (!currentPlan) {
@@ -137,7 +90,25 @@ export default function WorkoutScreen() {
         return recommendWorkoutPlan(profile, trainingSchedule?.day_states);
     }, [profile, trainingSchedule?.day_states]);
 
-    const selectedExercises = selectedWorkout?.exercises ?? [];
+    const scheduleSummary = useMemo(() => {
+        const source = trainingSchedule?.day_states;
+        if (source) {
+            const trainingDays = Array.from({ length: 7 }, (_, dayIndex) => dayIndex).filter(
+                (dayIndex) => source[dayIndex] === "gym"
+            ).length;
+
+            return {
+                trainingDays,
+                restDays: 7 - trainingDays,
+            };
+        }
+
+        const trainingDays = displayWorkouts.filter((day) => !day.is_rest_day).length;
+        return {
+            trainingDays,
+            restDays: 7 - trainingDays,
+        };
+    }, [displayWorkouts, trainingSchedule?.day_states]);
 
     const totalWorkoutDays = useMemo(() => {
         if (!currentPlan) {
@@ -146,36 +117,28 @@ export default function WorkoutScreen() {
         return displayWorkouts.filter((day) => !day.is_rest_day).length;
     }, [currentPlan, displayWorkouts]);
 
-    const restDays = useMemo(() => {
-        if (trainingSchedule?.day_states) {
-            return Array.from({ length: 7 }, (_, day) => day).reduce<Record<number, boolean>>((acc, day) => {
-                if (trainingSchedule.day_states[day] === "rest") {
-                    acc[day] = true;
-                }
-                return acc;
-            }, {});
+    const workoutDays = useMemo(() => {
+        return displayWorkouts.filter((day) => !day.is_rest_day);
+    }, [displayWorkouts]);
+
+    const selectedWorkoutExercises = useMemo(() => {
+        if (!selectedWorkout || selectedWorkout.is_rest_day) {
+            return [];
         }
 
-        return displayWorkouts.reduce<Record<number, boolean>>((acc, day) => {
-            if (day.is_rest_day) {
-                acc[day.day_of_week] = true;
-            }
-            return acc;
-        }, {});
-    }, [displayWorkouts, trainingSchedule?.day_states]);
+        return selectedWorkout.exercises;
+    }, [selectedWorkout]);
 
-    const recoveryDays = useMemo(() => {
-        if (!trainingSchedule?.day_states) {
-            return {};
+    useEffect(() => {
+        if (!workoutDays.length) {
+            return;
         }
 
-        return Array.from({ length: 7 }, (_, day) => day).reduce<Record<number, boolean>>((acc, day) => {
-            if (trainingSchedule.day_states[day] === "recovery") {
-                acc[day] = true;
-            }
-            return acc;
-        }, {});
-    }, [trainingSchedule?.day_states]);
+        const selectedIsWorkoutDay = workoutDays.some((day) => day.day_of_week === selectedDay);
+        if (!selectedIsWorkoutDay) {
+            selectDay(workoutDays[0].day_of_week);
+        }
+    }, [selectedDay, selectDay, workoutDays]);
 
     useEffect(() => {
         if (!profile?.user_id) {
@@ -244,53 +207,19 @@ export default function WorkoutScreen() {
                 await saveWorkoutSchedule(schedule);
                 setTrainingSchedule(schedule);
                 await syncAvailableDaysToProfile(schedule.gym_days.length);
+
+                const nextRecommendation = recommendWorkoutPlan(profile, schedule.day_states);
+                await generateNewPlan({
+                    preferredSplit: nextRecommendation.splitType,
+                    dayStates: schedule.day_states,
+                    forceRegenerate: true,
+                });
             } finally {
                 setSavingSchedule(false);
             }
         },
-        [profile?.user_id, syncAvailableDaysToProfile]
+        [generateNewPlan, profile, profile?.user_id, syncAvailableDaysToProfile]
     );
-
-    const openExerciseDetails = async (exercise: Exercise) => {
-        const currentIndex = selectedExercises.findIndex((item) => item.id === exercise.id);
-        setActiveExerciseIndex(currentIndex >= 0 ? currentIndex : 0);
-        setActiveExercise(exercise);
-        setModalVisible(true);
-        try {
-            const fullDetails = await fetchExerciseDetails(exercise.id);
-            setActiveExercise(fullDetails);
-        } catch {
-            setActiveExercise(exercise);
-        }
-    };
-
-    const loadExerciseAtIndex = useCallback(
-        async (index: number) => {
-            if (index < 0 || index >= selectedExercises.length) {
-                return;
-            }
-
-            const exercise = selectedExercises[index];
-            setActiveExerciseIndex(index);
-            setActiveExercise(exercise);
-
-            try {
-                const fullDetails = await fetchExerciseDetails(exercise.id);
-                setActiveExercise((current) => (current?.id === exercise.id ? fullDetails : current));
-            } catch {
-                setActiveExercise(exercise);
-            }
-        },
-        [selectedExercises]
-    );
-
-    const handlePreviousExercise = useCallback(() => {
-        void loadExerciseAtIndex(activeExerciseIndex - 1);
-    }, [activeExerciseIndex, loadExerciseAtIndex]);
-
-    const handleNextExercise = useCallback(() => {
-        void loadExerciseAtIndex(activeExerciseIndex + 1);
-    }, [activeExerciseIndex, loadExerciseAtIndex]);
 
     const handleCompleteWorkout = async (exerciseId?: string) => {
         if (!currentPlan) {
@@ -326,52 +255,25 @@ export default function WorkoutScreen() {
         (item) => item.day_of_week === selectedDay && !item.exercise_id
     );
 
+    const handleGenerateAiPlan = useCallback(() => {
+        void generateNewPlan({
+            forceRegenerate: true,
+            preferredSplit: recommendation.splitType,
+            dayStates: trainingSchedule?.day_states,
+        });
+    }, [generateNewPlan, recommendation.splitType, trainingSchedule?.day_states]);
+
     return (
         <SafeAreaView style={styles.safeArea}>
-            <ScrollView
-                contentContainerStyle={styles.content}
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={handleRefresh}
-                        tintColor={theme.colors.green.primary}
-                        colors={[theme.colors.green.primary]}
-                    />
-                }
-            >
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.heroCard}>
-                    <Text style={styles.title}>Weekly Workout</Text>
-                    <Text style={styles.progress}>{`${completedCount}/${totalWorkoutDays} workouts completed`}</Text>
-                    <Text style={styles.heroSubtext}>Minimal plan view with clear day focus and smooth exercise navigation.</Text>
-                </View>
-
-                <View style={styles.flowCard}>
-                    <Text style={styles.flowTitle}>Workout Setup Flow</Text>
-                    <Text style={styles.flowSubtitle}>Profile / goals → Schedule setup → Recommended split → Weekly plan → Exercise view</Text>
-
-                    <View style={styles.flowStepList}>
-                        <View style={styles.flowStepRow}>
-                            <Text style={styles.flowStepLabel}>1. Profile / goals</Text>
-                            <Text style={styles.flowStepState}>{hasRequiredWorkoutProfile ? "Ready" : "Missing details"}</Text>
-                        </View>
-                        <View style={styles.flowStepRow}>
-                            <Text style={styles.flowStepLabel}>2. Schedule setup</Text>
-                            <Text style={styles.flowStepState}>{trainingSchedule ? "Configured" : "Choose days"}</Text>
-                        </View>
-                        <View style={styles.flowStepRow}>
-                            <Text style={styles.flowStepLabel}>3. Recommended split</Text>
-                            <Text style={styles.flowStepState}>{recommendation.label}</Text>
-                        </View>
-                        <View style={styles.flowStepRow}>
-                            <Text style={styles.flowStepLabel}>4. Generated weekly plan</Text>
-                            <Text style={styles.flowStepState}>{currentPlan ? "Generated" : "Not generated"}</Text>
-                        </View>
-                        <View style={styles.flowStepRow}>
-                            <Text style={styles.flowStepLabel}>5. Exercise-by-exercise view</Text>
-                            <Text style={styles.flowStepState}>{selectedExercises.length > 0 ? "Available" : "Waiting for plan"}</Text>
-                        </View>
-                    </View>
+                    <Text style={styles.title}>FitPlan AI</Text>
+                    <Text style={styles.progress}>
+                        {currentPlan ? `${completedCount}/${totalWorkoutDays} workout days done` : "Plan your perfect workout week"}
+                    </Text>
+                    <Text style={styles.heroSubtext}>
+                        Select your training days and let AI generate a full 7-day split with detailed exercise guidance.
+                    </Text>
                 </View>
 
                 <WeeklyScheduleSelector
@@ -380,11 +282,21 @@ export default function WorkoutScreen() {
                     saving={savingSchedule}
                 />
 
-                <View style={styles.recommendationCard}>
-                    <Text style={styles.recommendationTitle}>Recommended split</Text>
-                    <Text style={styles.recommendationType}>{recommendation.label}</Text>
-                    <Text style={styles.recommendationReason}>{recommendation.rationale}</Text>
+                <View style={styles.recommendationInline}>
+                    <Text style={styles.recommendationInlineText}>{`AI split: ${recommendation.label}`}</Text>
                 </View>
+
+                <Pressable
+                    style={[styles.generateButton, (loading || savingSchedule || !hasRequiredWorkoutProfile) && styles.generateButtonDisabled]}
+                    disabled={loading || savingSchedule || !hasRequiredWorkoutProfile}
+                    onPress={handleGenerateAiPlan}
+                    accessibilityRole="button"
+                    accessibilityLabel="Generate AI workout plan"
+                >
+                    <Text style={styles.generateButtonText}>{loading ? "Generating..." : "Generate AI Workout Plan"}</Text>
+                </Pressable>
+
+                <Text style={styles.scheduleSummaryText}>{`${scheduleSummary.trainingDays} training day${scheduleSummary.trainingDays === 1 ? "" : "s"} · ${scheduleSummary.restDays} rest day${scheduleSummary.restDays === 1 ? "" : "s"}`}</Text>
 
                 {!hasRequiredWorkoutProfile ? (
                     <View style={styles.messageCard}>
@@ -401,18 +313,7 @@ export default function WorkoutScreen() {
                 {!currentPlan && hasRequiredWorkoutProfile ? (
                     <View style={styles.messageCard}>
                         <Text style={styles.messageTitle}>No workout plan yet</Text>
-                        <Text style={styles.messageBody}>Generate your weekly split to start training.</Text>
-                        <Pressable
-                            style={styles.actionButton}
-                            onPress={() => {
-                                void generateNewPlan({
-                                    preferredSplit: recommendation.splitType,
-                                    dayStates: trainingSchedule?.day_states,
-                                });
-                            }}
-                        >
-                            <Text style={styles.actionButtonText}>{loading ? "Generating..." : "Generate plan"}</Text>
-                        </Pressable>
+                        <Text style={styles.messageBody}>Tap “Generate AI Workout Plan” to build your full weekly split.</Text>
                     </View>
                 ) : null}
 
@@ -436,125 +337,87 @@ export default function WorkoutScreen() {
 
                 {currentPlan ? (
                     <>
-                        <DayTabs
-                            selectedDay={selectedDay}
-                            onSelectDay={selectDay}
-                            completedDays={completedDays}
-                            restDays={restDays}
-                            recoveryDays={recoveryDays}
-                        />
-
-                        <View style={styles.summaryCard}>
-                            <Text style={styles.summaryTitle}>Week summary</Text>
-                            <View style={styles.summaryMetricsRow}>
-                                <Text style={styles.summaryMetric}>{`${totalWorkoutDays} gym`}</Text>
-                                <Text style={styles.summaryMetric}>{`${Object.keys(restDays).length} rest`}</Text>
-                                <Text style={styles.summaryMetric}>{`${Object.keys(recoveryDays).length} recovery`}</Text>
-                            </View>
-                            <Text style={styles.summaryCaption}>{`${completedCount} of ${totalWorkoutDays} training days completed`}</Text>
-                        </View>
-
-                        {!selectedWorkout?.is_rest_day && selectedWorkout?.muscle_group ? (
-                            <Text style={styles.muscleGroupLabel}>
-                                {`Focus: ${selectedWorkout.muscle_group}`}
-                            </Text>
-                        ) : null}
-
-                        {selectedWorkout?.is_rest_day ? (
-                            <View style={styles.messageCard}>
-                                <Text style={styles.messageTitle}>Rest day</Text>
-                                <Text style={styles.messageBody}>Recovery day. Focus on hydration, sleep, and mobility.</Text>
-                            </View>
-                        ) : (
-                            <View style={styles.exerciseList}>
-                                <Pressable
-                                    style={styles.completeDayButton}
-                                    onPress={() => {
-                                        void handleCompleteWorkout();
-                                    }}
-                                    accessibilityRole="button"
-                                    accessibilityLabel="Mark whole day completed"
-                                >
-                                    <Text style={styles.completeDayButtonText}>
-                                        {hasSelectedDayCompletionRecord ? "Undo day completion" : "Complete whole day"}
-                                    </Text>
-                                </Pressable>
-
-                                {selectedWorkout?.exercises.length === 0 ? (
-                                    <View style={styles.messageCard}>
-                                        <Text style={styles.messageTitle}>No exercises for this day</Text>
-                                        <Text style={styles.messageBody}>Switch to another day or regenerate your plan after updating schedule preferences.</Text>
-                                    </View>
-                                ) : null}
-
-                                {selectedWorkout?.exercises.map((exercise) => (
-                                    <ExerciseCard
-                                        key={exercise.id}
-                                        exercise={exercise}
-                                        completed={Boolean(completedExercisesForSelectedDay[exercise.id])}
-                                        onPress={openExerciseDetails}
-                                        onToggleComplete={() => {
-                                            void handleCompleteWorkout(exercise.id);
-                                        }}
-                                    />
+                        <View style={styles.workoutDaysCard}>
+                            <Text style={styles.workoutDaysTitle}>Workout Days</Text>
+                            <View style={styles.workoutDaysWrap}>
+                                {workoutDays.map((day) => (
+                                    <Pressable
+                                        key={`work-day-${day.day_of_week}`}
+                                        style={[
+                                            styles.workoutDayButton,
+                                            selectedDay === day.day_of_week && styles.workoutDayButtonActive,
+                                        ]}
+                                        onPress={() => selectDay(day.day_of_week)}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.workoutDayButtonText,
+                                                selectedDay === day.day_of_week && styles.workoutDayButtonTextActive,
+                                            ]}
+                                        >
+                                            {DAY_LABELS[day.day_of_week]}
+                                        </Text>
+                                    </Pressable>
                                 ))}
                             </View>
-                        )}
+                        </View>
+
+                        {selectedWorkout?.muscle_group ? (
+                            <Text style={styles.muscleGroupLabel}>{`Focus: ${selectedWorkout.muscle_group}`}</Text>
+                        ) : null}
+
+                        <View style={styles.exerciseList}>
+                            <Pressable
+                                style={styles.completeDayButton}
+                                onPress={() => {
+                                    void handleCompleteWorkout();
+                                }}
+                                accessibilityRole="button"
+                                accessibilityLabel="Mark whole day completed"
+                            >
+                                <Text style={styles.completeDayButtonText}>
+                                    {hasSelectedDayCompletionRecord ? "Undo day completion" : "Complete whole day"}
+                                </Text>
+                            </Pressable>
+
+                            {selectedWorkoutExercises.length === 0 ? (
+                                <View style={styles.messageCard}>
+                                    <Text style={styles.messageTitle}>No exercises for this day</Text>
+                                    <Text style={styles.messageBody}>Generate again or choose another workout day.</Text>
+                                </View>
+                            ) : (
+                                <View style={styles.selectedDayTextCard}>
+                                    <Text style={styles.selectedDayTextTitle}>{`${DAY_LABELS[selectedDay]} Exercises`}</Text>
+                                    {selectedWorkoutExercises.map((exercise) => (
+                                        <Pressable
+                                            key={exercise.id}
+                                            style={styles.selectedDayExerciseRow}
+                                            onPress={() => {
+                                                void handleCompleteWorkout(exercise.id);
+                                            }}
+                                        >
+                                            <View style={styles.selectedDayExerciseTextWrap}>
+                                                <Text style={styles.selectedDayExerciseName}>{exercise.name}</Text>
+                                                {buildExerciseExplanation(exercise).map((step, stepIndex) => (
+                                                    <Text
+                                                        key={`today-step-${exercise.id}-${stepIndex}`}
+                                                        style={styles.selectedDayExerciseStep}
+                                                    >
+                                                        {`${stepIndex + 1}. ${step}`}
+                                                    </Text>
+                                                ))}
+                                            </View>
+                                            <Text style={styles.selectedDayExerciseToggle}>
+                                                {Boolean(completedExercisesForSelectedDay[exercise.id]) ? "✓" : "○"}
+                                            </Text>
+                                        </Pressable>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
                     </>
                 ) : null}
-
-                {/* ── Recommended for you ── */}
-                <View style={styles.recsSection}>
-                    <Text style={styles.recsSectionTitle}>Recommended for you</Text>
-
-                    {recsLoading && !recommendations.length ? (
-                        <>
-                            <SkeletonCard />
-                            <SkeletonCard />
-                            <SkeletonCard />
-                        </>
-                    ) : recsError && !recommendations.length ? (
-                        <View style={styles.recsErrorCard}>
-                            <Text style={styles.recsErrorText}>{recsError}</Text>
-                            <Pressable
-                                style={styles.recsRetryButton}
-                                onPress={() => void loadRecommendations()}
-                                accessibilityRole="button"
-                                accessibilityLabel="Retry loading recommendations"
-                            >
-                                <Text style={styles.recsRetryText}>Retry</Text>
-                            </Pressable>
-                        </View>
-                    ) : recommendations.length > 0 ? (
-                        recommendations.map((rec) => (
-                            <ExerciseCard
-                                key={rec.id}
-                                exercise={mapRecommendationToExercise(rec)}
-                                onPress={openExerciseDetails}
-                            />
-                        ))
-                    ) : (
-                        <View style={styles.messageCard}>
-                            <Text style={styles.messageBody}>No recommendations available yet.</Text>
-                        </View>
-                    )}
-                </View>
             </ScrollView>
-
-            <ExerciseDetailModal
-                visible={modalVisible}
-                exercise={activeExercise}
-                currentIndex={activeExerciseIndex}
-                totalCount={selectedExercises.length}
-                canGoPrevious={activeExerciseIndex > 0}
-                canGoNext={activeExerciseIndex < selectedExercises.length - 1}
-                onPrevious={handlePreviousExercise}
-                onNext={handleNextExercise}
-                onClose={() => {
-                    setModalVisible(false);
-                    setActiveExercise(null);
-                }}
-            />
         </SafeAreaView>
     );
 }
@@ -566,146 +429,90 @@ const styles = StyleSheet.create({
     },
     content: {
         paddingHorizontal: 18,
-        paddingTop: 12,
-        paddingBottom: 100,
-        gap: 14,
+        paddingTop: 10,
+        paddingBottom: 88,
+        gap: 10,
     },
     heroCard: {
         backgroundColor: theme.colors.background.secondary,
         borderRadius: theme.radius.lg,
-        padding: 16,
-        gap: 6,
+        padding: 14,
+        gap: 4,
         borderWidth: 1,
         borderColor: "rgba(57,255,136,0.1)",
         ...theme.glow.subtle,
     },
     title: {
-        fontSize: 32,
+        fontSize: 26,
         fontWeight: "800",
         color: theme.colors.text.primary,
     },
     progress: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: "700",
         color: theme.colors.green.primary,
     },
     heroSubtext: {
-        fontSize: 13,
-        lineHeight: 18,
+        fontSize: 12,
+        lineHeight: 16,
         fontWeight: "500",
         color: theme.colors.text.secondary,
     },
-    flowCard: {
+    recommendationInline: {
+        borderRadius: theme.radius.md,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
         backgroundColor: theme.colors.background.secondary,
-        borderRadius: theme.radius.lg,
-        padding: 16,
-        gap: 10,
         borderWidth: 1,
         borderColor: "rgba(57,255,136,0.08)",
     },
-    flowTitle: {
-        fontSize: 17,
-        fontWeight: "700",
-        color: theme.colors.text.primary,
-    },
-    flowSubtitle: {
-        fontSize: 13,
-        lineHeight: 18,
-        color: theme.colors.text.secondary,
-    },
-    flowStepList: {
-        gap: 8,
-    },
-    flowStepRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        gap: 8,
-    },
-    flowStepLabel: {
-        flex: 1,
-        fontSize: 13,
-        color: theme.colors.text.secondary,
-    },
-    flowStepState: {
-        fontSize: 13,
-        fontWeight: "700",
-        color: theme.colors.green.soft,
-    },
-    recommendationCard: {
-        backgroundColor: theme.colors.background.secondary,
-        borderRadius: theme.radius.lg,
-        padding: 16,
-        gap: 6,
-        borderWidth: 1,
-        borderColor: "rgba(57,255,136,0.08)",
-    },
-    recommendationTitle: {
-        fontSize: 13,
-        fontWeight: "600",
-        color: theme.colors.text.secondary,
-        textTransform: "uppercase",
-    },
-    recommendationType: {
-        fontSize: 20,
-        fontWeight: "800",
-        color: theme.colors.green.primary,
-    },
-    recommendationReason: {
-        fontSize: 13,
-        lineHeight: 18,
-        color: theme.colors.text.secondary,
-    },
-    exerciseList: {
-        gap: 12,
-    },
-    summaryCard: {
-        backgroundColor: theme.colors.background.secondary,
-        borderRadius: theme.radius.lg,
-        padding: 14,
-        gap: 8,
-        borderWidth: 1,
-        borderColor: "rgba(57,255,136,0.08)",
-    },
-    summaryTitle: {
-        fontSize: 14,
-        fontWeight: "700",
-        color: theme.colors.text.primary,
-    },
-    summaryMetricsRow: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 8,
-    },
-    summaryMetric: {
+    recommendationInlineText: {
         fontSize: 12,
         fontWeight: "700",
         color: theme.colors.green.soft,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: theme.radius.full,
-        backgroundColor: "rgba(57,255,136,0.10)",
     },
-    summaryCaption: {
+    generateButton: {
+        minHeight: 50,
+        borderRadius: theme.radius.full,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: theme.colors.green.primary,
+        ...theme.glow.primary,
+    },
+    generateButtonDisabled: {
+        opacity: 0.65,
+    },
+    generateButtonText: {
+        color: theme.colors.background.main,
+        fontSize: 16,
+        fontWeight: "800",
+    },
+    scheduleSummaryText: {
         fontSize: 13,
+        fontWeight: "600",
         color: theme.colors.text.secondary,
+        textAlign: "center",
+    },
+    exerciseList: {
+        gap: 10,
     },
     messageCard: {
         backgroundColor: theme.colors.background.secondary,
         borderRadius: theme.radius.lg,
-        padding: 16,
-        gap: 8,
+        padding: 14,
+        gap: 6,
         borderWidth: 1,
         borderColor: "rgba(57,255,136,0.08)",
     },
     messageTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: "700",
         color: theme.colors.text.primary,
     },
     messageBody: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: "500",
-        lineHeight: 20,
+        lineHeight: 18,
         color: theme.colors.text.secondary,
     },
     actionButton: {
@@ -758,18 +565,18 @@ const styles = StyleSheet.create({
         color: theme.colors.error,
     },
     completeDayButton: {
-        minHeight: 42,
+        minHeight: 38,
         borderRadius: theme.radius.full,
         borderWidth: 1,
         borderColor: theme.colors.green.primary,
         alignItems: "center",
         justifyContent: "center",
-        paddingHorizontal: 14,
+        paddingHorizontal: 12,
         backgroundColor: "rgba(57,255,136,0.08)",
         alignSelf: "flex-start",
     },
     completeDayButtonText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: "700",
         color: theme.colors.green.primary,
     },
@@ -779,41 +586,90 @@ const styles = StyleSheet.create({
         color: theme.colors.text.secondary,
         textTransform: "capitalize",
     },
-    recsSection: {
-        gap: 12,
-        marginTop: 8,
+    workoutDaysCard: {
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.lg,
+        padding: 12,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: "rgba(57,255,136,0.08)",
     },
-    recsSectionTitle: {
-        fontSize: 20,
+    workoutDaysTitle: {
+        fontSize: 15,
         fontWeight: "800",
         color: theme.colors.text.primary,
     },
-    recsErrorCard: {
+    workoutDaysWrap: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 8,
+    },
+    workoutDayButton: {
+        minWidth: 64,
+        borderRadius: theme.radius.full,
+        borderWidth: 1,
+        borderColor: theme.colors.ui.divider,
+        backgroundColor: theme.colors.background.main,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+    },
+    workoutDayButtonActive: {
+        borderColor: theme.colors.green.primary,
+        backgroundColor: "rgba(57,255,136,0.16)",
+    },
+    workoutDayButtonText: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: theme.colors.text.secondary,
+    },
+    workoutDayButtonTextActive: {
+        color: theme.colors.green.primary,
+    },
+    selectedDayTextCard: {
         backgroundColor: theme.colors.background.secondary,
         borderRadius: theme.radius.lg,
-        padding: 14,
-        gap: 8,
+        padding: 12,
+        gap: 10,
         borderWidth: 1,
-        borderColor: "rgba(255,82,82,0.35)",
+        borderColor: "rgba(57,255,136,0.08)",
+    },
+    selectedDayTextTitle: {
+        fontSize: 15,
+        fontWeight: "800",
+        color: theme.colors.text.primary,
+    },
+    selectedDayExerciseRow: {
+        flexDirection: "row",
         alignItems: "flex-start",
-    },
-    recsErrorText: {
-        fontSize: 13,
-        fontWeight: "600",
-        color: theme.colors.error,
-    },
-    recsRetryButton: {
-        minHeight: 38,
-        borderRadius: theme.radius.full,
-        paddingHorizontal: 12,
-        justifyContent: "center",
+        justifyContent: "space-between",
+        borderRadius: theme.radius.md,
         borderWidth: 1,
-        borderColor: theme.colors.error,
-        backgroundColor: "rgba(255,82,82,0.08)",
+        borderColor: theme.colors.ui.divider,
+        backgroundColor: theme.colors.background.main,
+        padding: 10,
+        gap: 10,
     },
-    recsRetryText: {
-        fontSize: 12,
+    selectedDayExerciseTextWrap: {
+        flex: 1,
+        gap: 3,
+    },
+    selectedDayExerciseName: {
+        fontSize: 14,
         fontWeight: "700",
-        color: theme.colors.error,
+        color: theme.colors.green.soft,
+    },
+    selectedDayExerciseStep: {
+        fontSize: 12,
+        fontWeight: "500",
+        lineHeight: 17,
+        color: theme.colors.text.secondary,
+    },
+    selectedDayExerciseToggle: {
+        fontSize: 22,
+        lineHeight: 24,
+        color: theme.colors.green.primary,
+        fontWeight: "800",
     },
 });

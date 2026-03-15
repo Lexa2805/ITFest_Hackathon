@@ -303,6 +303,10 @@ export async function logMeal(payload: MealLogRequest): Promise<MealLogResponse>
   return data;
 }
 
+export async function deleteLoggedMeal(mealLogId: string): Promise<void> {
+  await api.delete(`/nutrition-agent/log-meal/${mealLogId}`);
+}
+
 export async function getDailySummary(userId: string, date: string): Promise<DailySummaryResponse> {
   const { data } = await api.get<DailySummaryResponse>(`/nutrition-agent/daily-summary/${userId}/${date}`);
   return data;

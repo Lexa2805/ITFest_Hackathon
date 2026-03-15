@@ -31,6 +31,7 @@ export interface ProfilePayload {
     experience_level?: "beginner" | "intermediate" | "advanced" | null;
     available_days_per_week?: number | null;
     has_apple_watch: boolean;
+    is_profile_public?: boolean;
     weekly_budget?: number | null;
 }
 
@@ -47,6 +48,7 @@ export interface ProfileResponse {
     experience_level?: "beginner" | "intermediate" | "advanced" | null;
     available_days_per_week?: number | null;
     has_apple_watch: boolean;
+    is_profile_public?: boolean;
     weekly_budget?: number | null;
     created_at?: string;
     updated_at?: string;

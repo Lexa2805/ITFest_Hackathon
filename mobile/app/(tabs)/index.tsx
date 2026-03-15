@@ -10,8 +10,8 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useHealthStore } from '@/stores/healthStore';
-import { useAuthStore } from '@/stores/authStore';
 import { useLifeScoreStore } from '@/stores/lifeScoreStore';
+import { useProfileContext } from '@/contexts/ProfileContext';
 import { DailyBriefingCard } from '@/components/home/DailyBriefingCard';
 import { LifeScoreWidget } from '@/components/home/LifeScoreWidget';
 import { TrendSparkline } from '@/components/home/TrendSparkline';
@@ -33,29 +33,31 @@ const mockMetrics: HealthMetric[] = [
   { label: 'Sleep', value: '--', unit: '', icon: '🌙' },
   { label: 'Heart Rate', value: '--', unit: 'bpm', icon: '💚' },
   { label: 'Steps', value: '--', unit: '', icon: '👟' },
-  { label: 'Calories', value: '--', unit: 'kcal', icon: '🔥' },
+  { label: 'HRV', value: '--', unit: 'ms', icon: '📈' },
 ];
 
 export default function HomeScreen() {
   const healthData = useHealthStore((s) => s.healthData);
   const loadHealthData = useHealthStore((s) => s.loadHealthData);
   const isHealthInitialized = useHealthStore((s) => s.isInitialized);
-  const user = useAuthStore((s) => s.user);
   const fetchLifeScore = useLifeScoreStore((s) => s.fetchLifeScore);
+  const { profile } = useProfileContext();
 
   const [trendSleep, setTrendSleep] = useState<TrendResponse | null>(null);
   const [trendSteps, setTrendSteps] = useState<TrendResponse | null>(null);
   const [trendCalories, setTrendCalories] = useState<TrendResponse | null>(null);
+  const [trendHeartRate, setTrendHeartRate] = useState<TrendResponse | null>(null);
   const [streaks, setStreaks] = useState<StreakResponse | null>(null);
   const [expiryAlerts, setExpiryAlerts] = useState<ExpiryAlertItem[]>([]);
 
   useEffect(() => {
     if (!isHealthInitialized) loadHealthData();
-    getTrendData('sleep_hours', 7).then(setTrendSleep).catch(() => {});
-    getTrendData('steps', 7).then(setTrendSteps).catch(() => {});
-    getTrendData('calories', 7).then(setTrendCalories).catch(() => {});
-    getStreaks().then(setStreaks).catch(() => {});
-    getExpiryAlerts().then(setExpiryAlerts).catch(() => {});
+    getTrendData('sleep_hours', 7).then(setTrendSleep).catch(() => { });
+    getTrendData('steps', 7).then(setTrendSteps).catch(() => { });
+    getTrendData('calories', 7).then(setTrendCalories).catch(() => { });
+    getTrendData('heart_rate', 7).then(setTrendHeartRate).catch(() => { });
+    getStreaks().then(setStreaks).catch(() => { });
+    getExpiryAlerts().then(setExpiryAlerts).catch(() => { });
     fetchLifeScore();
   }, []);
 
@@ -67,16 +69,18 @@ export default function HomeScreen() {
   }, []);
 
   const userName = useMemo(() => {
-    if (user?.email) {
-      const name = user.email.split('@')[0];
-      return name.charAt(0).toUpperCase() + name.slice(1);
-    }
+    if (profile?.name && profile.name.trim().length > 0) return profile.name.trim();
     return 'there';
-  }, [user]);
+  }, [profile?.name]);
 
   const healthMetrics: HealthMetric[] = useMemo(() => {
     if (!healthData) return mockMetrics;
     const m = healthData.parsed_metrics;
+    const heartRate7dAvg =
+      trendHeartRate && trendHeartRate.data_points.length > 0
+        ? trendHeartRate.data_points.reduce((sum, point) => sum + point.value, 0) /
+        trendHeartRate.data_points.length
+        : null;
     const fmtH = (hrs: number) => {
       const h = Math.floor(hrs);
       const mins = Math.round((hrs - h) * 60);
@@ -85,11 +89,16 @@ export default function HomeScreen() {
     const fmtN = (n: number) => Math.round(n).toLocaleString();
     return [
       { label: 'Sleep', value: fmtH(m.sleep_analysis.average), unit: '', icon: '🌙' },
-      { label: 'Heart Rate', value: `${Math.round(m.heart_rate.average)}`, unit: 'bpm', icon: '💚' },
+      {
+        label: 'Heart Rate',
+        value: `${Math.round(heartRate7dAvg ?? m.heart_rate.average)}`,
+        unit: 'bpm',
+        icon: '💚',
+      },
       { label: 'Steps', value: fmtN(m.step_count.average), unit: '', icon: '👟' },
-      { label: 'Calories', value: fmtN(m.active_energy_burned.average), unit: 'kcal', icon: '🔥' },
+      { label: 'HRV', value: `${Math.round(m.hrv_sdnn.average)}`, unit: 'ms', icon: '📈' },
     ];
-  }, [healthData]);
+  }, [healthData, trendHeartRate]);
 
   const primaryStreak = useMemo(() => {
     if (!streaks) return 0;

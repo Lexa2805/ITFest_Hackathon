@@ -25,6 +25,29 @@ MODEL = "openai/gpt-5.1"
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+DRINK_KEYWORDS = (
+    "drink",
+    "beverage",
+    "soda",
+    "cola",
+    "juice",
+    "smoothie",
+    "milkshake",
+    "shake",
+    "tea",
+    "coffee",
+    "espresso",
+    "latte",
+    "cappuccino",
+    "water",
+    "pepsi",
+    "coke",
+    "fanta",
+    "sprite",
+    "red bull",
+    "monster",
+)
+
 
 async def generate_daily_meal_plan(
     *,
@@ -167,6 +190,7 @@ async def _call_llm_for_plan(
             "Use ONLY fridge ingredients",
             "Include exact grams for every ingredient",
             "Aim to match calorie and macro targets as closely as possible",
+            "Only include food meals; do not include drinks, sodas, juices, coffee, tea, or water as meals",
         ],
     }
 
@@ -245,6 +269,9 @@ def _normalize_plan_json(plan: dict[str, Any]) -> dict[str, Any]:
         raw_section = plan.get(section) or []
         normalized_section: list[dict[str, Any]] = []
         for meal in raw_section:
+            meal_name = str(meal.get("meal_name") or "")
+            if _is_drink_like_meal_name(meal_name):
+                continue
             meal_input = {
                 **meal,
                 "kcal": _to_int(meal.get("kcal")),
@@ -262,10 +289,10 @@ def _normalize_plan_json(plan: dict[str, Any]) -> dict[str, Any]:
             normalized_section.append(meal_model.model_dump(mode="json"))
         meals_by_section[section] = normalized_section
 
-    total_kcal = _to_int(plan.get("total_kcal"))
-    total_protein_g = _to_int(plan.get("total_protein_g"))
-    total_fat_g = _to_int(plan.get("total_fat_g"))
-    total_carbs_g = _to_int(plan.get("total_carbs_g"))
+    total_kcal = sum(meal["kcal"] for meals in meals_by_section.values() for meal in meals)
+    total_protein_g = sum(meal["protein_g"] for meals in meals_by_section.values() for meal in meals)
+    total_fat_g = sum(meal["fat_g"] for meals in meals_by_section.values() for meal in meals)
+    total_carbs_g = sum(meal["carbs_g"] for meals in meals_by_section.values() for meal in meals)
 
     return {
         "breakfast": meals_by_section["breakfast"],
@@ -277,6 +304,14 @@ def _normalize_plan_json(plan: dict[str, Any]) -> dict[str, Any]:
         "total_fat_g": total_fat_g,
         "total_carbs_g": total_carbs_g,
     }
+
+
+def _is_drink_like_meal_name(meal_name: str) -> bool:
+    """Return True when the suggested meal name looks like a drink/beverage."""
+    normalized = meal_name.strip().lower()
+    if not normalized:
+        return False
+    return any(keyword in normalized for keyword in DRINK_KEYWORDS)
 
 from app.services.recipe_rag_service import RecipeRAGService
 

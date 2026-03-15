@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     Image,
     StyleSheet,
@@ -28,12 +28,29 @@ export function ExerciseImageView({
     imageStyle,
     placeholderLabel = "No image available",
 }: ExerciseImageViewProps) {
-    const source = exercise ? getExerciseImageSource(exercise) : null;
+    const source = useMemo(() => (exercise ? getExerciseImageSource(exercise) : null), [exercise]);
+    const [imageFailed, setImageFailed] = useState(false);
 
-    if (source) {
+    useEffect(() => {
+        setImageFailed(false);
+    }, [source, exercise?.id]);
+
+    const isRemoteSource =
+        typeof source === "object" && source !== null && "uri" in source && typeof source.uri === "string";
+
+    if (source && !(isRemoteSource && imageFailed)) {
         return (
             <View style={[styles.frame, { height }, style]}>
-                <Image source={source} style={[styles.image, imageStyle]} resizeMode="cover" />
+                <Image
+                    source={source}
+                    style={[styles.image, imageStyle]}
+                    resizeMode="cover"
+                    onError={() => {
+                        if (isRemoteSource) {
+                            setImageFailed(true);
+                        }
+                    }}
+                />
             </View>
         );
     }

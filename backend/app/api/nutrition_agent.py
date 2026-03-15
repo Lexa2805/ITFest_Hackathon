@@ -106,6 +106,15 @@ async def log_meal(
     return await meal_logger_service.log_meal(user_id=user_id, body=body)
 
 
+@router.delete("/nutrition-agent/log-meal/{meal_log_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+async def delete_meal_log(
+    meal_log_id: UUID,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Delete one meal log for the authenticated user."""
+    await meal_logger_service.delete_meal(user_id=user_id, meal_log_id=meal_log_id)
+
+
 @router.get("/nutrition-agent/daily-summary/{user_id}/{summary_date}", response_model=DailySummaryResponse)
 async def get_daily_summary(
     user_id: UUID,

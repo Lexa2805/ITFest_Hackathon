@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -21,6 +22,8 @@ import { theme } from '@/constants/theme';
 import { MeshBackground } from '@/components/ui/MeshBackground';
 import { GlowInput } from '@/components/ui/GlowInput';
 import { NeonButton } from '@/components/ui/NeonButton';
+
+const logoSource = require('@/assets/images/vitalos-logo.jpeg');
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -88,11 +91,7 @@ export default function SignUpScreen() {
         >
           {/* ── Brand header ── */}
           <Animated.View entering={FadeInUp.duration(600).delay(100)} style={styles.header}>
-            <View style={styles.logoRing}>
-              <View style={styles.logoInner}>
-                <Text style={styles.logoGlyph}>⬡</Text>
-              </View>
-            </View>
+            <Image source={logoSource} style={styles.logoImage} />
             <Text style={styles.brand}>Health OS</Text>
             <Text style={styles.tagline}>Start your wellness journey</Text>
           </Animated.View>
@@ -183,28 +182,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logoRing: {
+  logoImage: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
-    borderColor: 'rgba(57,255,136,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: theme.radius.lg,
     marginBottom: theme.spacing.md,
     ...theme.glow.subtle,
-  },
-  logoInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(57,255,136,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoGlyph: {
-    fontSize: 28,
-    color: theme.colors.green.primary,
   },
   brand: {
     fontSize: 32,

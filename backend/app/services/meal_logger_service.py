@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date
+from uuid import UUID
 
 from fastapi import HTTPException, status
 from postgrest.exceptions import APIError
@@ -38,6 +39,48 @@ async def log_meal(user_id: str, body: MealLogRequest) -> MealLogResponse:
             detail="Failed to save meal log.",
         )
     return MealLogResponse(**result.data[0])
+
+
+async def delete_meal(user_id: str, meal_log_id: UUID) -> None:
+    """Delete one logged meal that belongs to the authenticated user."""
+    supabase = await get_supabase()
+
+    try:
+        existing = await (
+            supabase.table(LOGS_TABLE)
+            .select("id")
+            .eq("id", str(meal_log_id))
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+    except APIError as exc:
+        logger.exception("meal_logs lookup failed before delete: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete meal log.",
+        ) from exc
+
+    if not existing.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Meal log not found.",
+        )
+
+    try:
+        await (
+            supabase.table(LOGS_TABLE)
+            .delete()
+            .eq("id", str(meal_log_id))
+            .eq("user_id", user_id)
+            .execute()
+        )
+    except APIError as exc:
+        logger.exception("meal_logs delete failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete meal log.",
+        ) from exc
 
 
 async def get_daily_summary(user_id: str, summary_date: date) -> DailySummaryResponse:

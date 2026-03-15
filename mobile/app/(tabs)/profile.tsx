@@ -33,6 +33,8 @@ import { type AgentItem } from '@/components/profile/AgentAccessSection';
 import { theme } from '@/constants/theme';
 import { NeonButton } from '@/components/ui/NeonButton';
 
+const logoSource = require('@/assets/images/vitalos-logo.jpeg');
+
 const activityOptions: ActivityLevel[] = ['sedentary', 'lightly active', 'moderately active', 'very active'];
 const goalOptions: HealthGoal[] = ['lose weight', 'maintain', 'build muscle', 'improve endurance'];
 const genderOptions: Gender[] = ['male', 'female', 'non-binary', 'prefer not to say', 'other'];
@@ -105,6 +107,7 @@ export default function ProfileScreen() {
     const [hasAppleWatch, setHasAppleWatch] = useState(true);
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
     const [weeklyBudget, setWeeklyBudget] = useState('');
+    const [isProfilePublic, setIsProfilePublic] = useState(true);
 
     const [heartRate, setHeartRate] = useState('');
     const [sleepHours, setSleepHours] = useState('');
@@ -128,6 +131,7 @@ export default function ProfileScreen() {
         setExperienceLevel((profile.experience_level as 'beginner' | 'intermediate' | 'advanced' | null) ?? null);
         setAvailableDaysPerWeek(typeof profile.available_days_per_week === 'number' ? String(profile.available_days_per_week) : '');
         setHasAppleWatch(profile.has_apple_watch);
+        setIsProfilePublic(profile.is_profile_public ?? true);
         setWeeklyBudget(typeof profile.weekly_budget === 'number' ? String(profile.weekly_budget) : '');
         if (typeof profile.weight === 'number') {
             setWeight(weightUnit === 'kg' ? profile.weight.toFixed(1) : toLbs(profile.weight).toFixed(1));
@@ -182,6 +186,7 @@ export default function ProfileScreen() {
                 name: name.trim() || null, email: email.trim() || user?.email || null,
                 weight: weightKg, height: heightValueCm, age: Number.isFinite(parsedAge) ? parsedAge : null,
                 gender, activity_level: activityLevel, goal, has_apple_watch: hasAppleWatch,
+                is_profile_public: isProfilePublic,
                 experience_level: experienceLevel,
                 available_days_per_week: Number.isFinite(parsedAvailableDays)
                     ? Math.min(7, Math.max(1, parsedAvailableDays))
@@ -257,12 +262,15 @@ export default function ProfileScreen() {
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <Text style={styles.screenTitle}>Profile</Text>
+                <View style={styles.topRow}>
+                    <Text style={styles.screenTitle}>Profile</Text>
+                    <Image source={logoSource} style={styles.cornerLogo} />
+                </View>
 
                 {/* ── Avatar + name hero ── */}
                 <View style={styles.heroRow}>
                     <Pressable onPress={handleAvatarPress} style={styles.avatarWrap}>
-                        {avatarUri ? <Image source={{ uri: avatarUri }} style={styles.avatarImage} /> : <Text style={styles.avatarInitial}>{(name || user?.email || 'U').charAt(0).toUpperCase()}</Text>}
+                        <Image source={logoSource} style={styles.avatarImage} />
                     </Pressable>
                     <View style={styles.heroTextCol}>
                         <Text style={styles.heroName}>{name || 'Your Name'}</Text>
@@ -270,19 +278,27 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
-                {/* ── Stats row ── */}
-                <View style={styles.statsRow}>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{Math.round(profileCompletion)}%</Text>
-                        <Text style={styles.statLabel}>Profile complete</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{todayCheckinSubmitted ? '1' : '0'}</Text>
-                        <Text style={styles.statLabel}>Check-in today</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{hasAppleWatch ? 'Auto' : 'Manual'}</Text>
-                        <Text style={styles.statLabel}>Data mode</Text>
+                {/* ── Quick controls ── */}
+                <View style={styles.quickControls}>
+                    <Pressable style={styles.smallButton}>
+                        <Text style={styles.smallButtonText}>Profile complete: {Math.round(profileCompletion)}%</Text>
+                    </Pressable>
+                    <View style={styles.visibilityWrap}>
+                        <Text style={styles.visibilityLabel}>Profile visibility</Text>
+                        <View style={styles.visibilityButtons}>
+                            <Pressable
+                                style={[styles.visibilityButton, !isProfilePublic && styles.visibilityButtonSelected]}
+                                onPress={() => setIsProfilePublic(false)}
+                            >
+                                <Text style={[styles.visibilityButtonText, !isProfilePublic && styles.visibilityButtonTextSelected]}>Private</Text>
+                            </Pressable>
+                            <Pressable
+                                style={[styles.visibilityButton, isProfilePublic && styles.visibilityButtonSelected]}
+                                onPress={() => setIsProfilePublic(true)}
+                            >
+                                <Text style={[styles.visibilityButtonText, isProfilePublic && styles.visibilityButtonTextSelected]}>Public</Text>
+                            </Pressable>
+                        </View>
                     </View>
                 </View>
 
@@ -431,7 +447,9 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: theme.colors.background.main },
     content: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 100, gap: 14 },
+    topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     screenTitle: { color: theme.colors.text.primary, fontSize: 34, fontWeight: '800', letterSpacing: 0.3, marginBottom: 2 },
+    cornerLogo: { width: 44, height: 44, borderRadius: 12, ...theme.glow.subtle },
     heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
     avatarWrap: {
         width: 74, height: 74, borderRadius: 37,
@@ -445,10 +463,33 @@ const styles = StyleSheet.create({
     heroTextCol: { flex: 1, gap: 2 },
     heroName: { color: theme.colors.text.primary, fontSize: 24, fontWeight: '800' },
     heroEmail: { color: theme.colors.text.muted, fontSize: 13 },
-    statsRow: { flexDirection: 'row', gap: 12, marginTop: 2 },
-    statItem: { flex: 1, backgroundColor: theme.colors.background.secondary, borderRadius: theme.radius.lg, padding: 14 },
-    statValue: { color: theme.colors.text.primary, fontSize: 28, fontWeight: '900', lineHeight: 32 },
-    statLabel: { color: theme.colors.text.muted, fontSize: 11, fontWeight: '600', marginTop: 2 },
+    quickControls: { gap: 10, marginTop: 4 },
+    smallButton: {
+        alignSelf: 'flex-start',
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.full,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+    },
+    smallButtonText: { color: theme.colors.text.primary, fontSize: 12, fontWeight: '700' },
+    visibilityWrap: {
+        backgroundColor: theme.colors.background.secondary,
+        borderRadius: theme.radius.lg,
+        padding: 12,
+        gap: 10,
+    },
+    visibilityLabel: { color: theme.colors.text.secondary, fontSize: 12, fontWeight: '600' },
+    visibilityButtons: { flexDirection: 'row', gap: 8 },
+    visibilityButton: {
+        flex: 1,
+        borderRadius: theme.radius.full,
+        paddingVertical: 9,
+        alignItems: 'center',
+        backgroundColor: theme.colors.background.elevated,
+    },
+    visibilityButtonSelected: { backgroundColor: 'rgba(57,255,136,0.14)' },
+    visibilityButtonText: { color: theme.colors.text.secondary, fontSize: 12, fontWeight: '700' },
+    visibilityButtonTextSelected: { color: theme.colors.green.primary },
     divider: { height: 1, backgroundColor: theme.colors.ui.divider, marginVertical: 2 },
     section: { gap: 12 },
     sectionTitle: { color: theme.colors.green.primary, fontSize: 14, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 },

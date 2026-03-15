@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, tzinfo
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from postgrest.exceptions import APIError
@@ -24,16 +24,19 @@ _DEFAULT_CARBS = 220
 _DEFAULT_WATER = 2000
 
 
-def _resolve_tz(timezone_str: str) -> ZoneInfo:
+def _resolve_tz(timezone_str: str) -> tzinfo:
     """Return a ZoneInfo for *timezone_str*, falling back to UTC."""
     try:
         return ZoneInfo(timezone_str)
     except (ZoneInfoNotFoundError, KeyError):
-        logger.warning("Unknown timezone '%s', falling back to UTC", timezone_str)
-        return ZoneInfo("UTC")
+        logger.warning(
+            "Unknown timezone '%s' or missing tzdata, falling back to UTC",
+            timezone_str,
+        )
+        return timezone.utc
 
 
-def _local_today(tz: ZoneInfo) -> date:
+def _local_today(tz: tzinfo) -> date:
     """Current calendar date in the given timezone."""
     return datetime.now(tz).date()
 

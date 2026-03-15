@@ -32,7 +32,7 @@ export function ExerciseCard({
         >
             <ExerciseImageView
                 exercise={exercise}
-                height={180}
+                height={132}
                 style={styles.mediaWrap}
                 placeholderLabel="Exercise image coming soon"
             />
@@ -64,8 +64,8 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: theme.colors.background.secondary,
         borderRadius: theme.radius.lg,
-        padding: 12,
-        gap: 12,
+        padding: 10,
+        gap: 10,
         borderWidth: 1,
         borderColor: "rgba(57,255,136,0.08)",
     },
@@ -80,10 +80,10 @@ const styles = StyleSheet.create({
     },
     textWrap: {
         flex: 1,
-        gap: 4,
+        gap: 2,
     },
     name: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: "700",
         color: theme.colors.text.primary,
     },
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
         textTransform: "capitalize",
     },
     setsReps: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: "600",
         color: theme.colors.text.secondary,
     },
@@ -104,9 +104,9 @@ const styles = StyleSheet.create({
         color: theme.colors.text.muted,
     },
     completeButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: theme.colors.background.elevated,
@@ -119,8 +119,8 @@ const styles = StyleSheet.create({
         ...theme.glow.subtle,
     },
     completeText: {
-        fontSize: 20,
-        lineHeight: 22,
+        fontSize: 18,
+        lineHeight: 20,
         color: theme.colors.green.primary,
         fontWeight: "800",
     },

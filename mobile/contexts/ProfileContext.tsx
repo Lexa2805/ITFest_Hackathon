@@ -87,6 +87,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
                     name: null,
                     email: user.email,
                     has_apple_watch: true,
+                    is_profile_public: true,
                 });
             } else {
                 setProfile({ ...fetched, email: fetched.email ?? user.email });
@@ -134,6 +135,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
                 experience_level: profile?.experience_level,
                 available_days_per_week: profile?.available_days_per_week,
                 has_apple_watch: enabled,
+                is_profile_public: profile?.is_profile_public ?? true,
                 weekly_budget: profile?.weekly_budget,
             });
         },

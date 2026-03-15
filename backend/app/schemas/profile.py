@@ -38,6 +38,7 @@ class ProfileUpsertRequest(BaseModel):
     experience_level: ExperienceLevel | None = None
     available_days_per_week: int | None = Field(default=None, ge=1, le=7)
     has_apple_watch: bool = True
+    is_profile_public: bool = True
     weekly_budget: float | None = Field(default=None, ge=0)
 
 
@@ -56,6 +57,7 @@ class ProfileResponse(BaseModel):
     experience_level: str | None = None
     available_days_per_week: int | None = None
     has_apple_watch: bool = True
+    is_profile_public: bool = True
     weekly_budget: float | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

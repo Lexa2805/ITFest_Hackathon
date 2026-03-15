@@ -2,9 +2,11 @@
 
 import pytest
 from datetime import datetime
+from uuid import uuid4
 
 from backend.app.services.workout_split_service import generate_split
 from backend.app.schemas.profile import ProfileResponse
+from backend.app.schemas.workout import ExerciseResponse
 
 
 def test_generate_split_3_days_beginner_ppl():
@@ -222,3 +224,66 @@ def test_edge_case_7_days():
     
     assert result["split_type"] == "push_pull_legs"
     assert result["days_per_week"] == 7
+
+
+def test_generated_plan_avoids_duplicate_exercises_across_training_days(monkeypatch):
+    profile = ProfileResponse(
+        user_id="test-user",
+        goal="build muscle",
+        experience_level="intermediate",
+        available_days_per_week=4,
+    )
+
+    catalog: dict[tuple[str, str], list[ExerciseResponse]] = {}
+    muscle_groups = [
+        "chest",
+        "back",
+        "shoulders",
+        "arms",
+        "legs",
+        "glutes",
+        "hamstrings",
+        "quadriceps",
+        "calves",
+        "core",
+        "triceps",
+        "biceps",
+        "rear delts",
+        "full body",
+    ]
+
+    for difficulty in ["beginner", "intermediate", "advanced"]:
+        for muscle in muscle_groups:
+            key = (muscle, difficulty)
+            catalog[key] = [
+                ExerciseResponse(
+                    id=uuid4(),
+                    name=f"{muscle}-{difficulty}-{index}",
+                    demonstration_url=None,
+                    execution_steps=["step 1"],
+                    muscle_group=muscle,
+                    equipment=[],
+                    sets=3,
+                    reps=10,
+                    rest_seconds=60,
+                    difficulty=difficulty,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                for index in range(1, 8)
+            ]
+
+    def fake_get_exercises_by_muscle_group(muscle_group: str, difficulty: str):
+        return catalog.get((muscle_group, difficulty), [])
+
+    monkeypatch.setattr(
+        "backend.app.services.workout_split_service.get_exercises_by_muscle_group",
+        fake_get_exercises_by_muscle_group,
+    )
+
+    result = generate_split(profile)
+    training_days = [day for day in result["daily_workouts"] if not day.is_rest_day]
+    all_ids = [str(ex.id) for day in training_days for ex in day.exercises]
+
+    assert all(len(day.exercises) > 0 for day in training_days)
+    assert len(all_ids) == len(set(all_ids))
