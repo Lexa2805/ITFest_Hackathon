@@ -28,13 +28,31 @@ export interface AgentTriggerResult {
     detail: string | null;
 }
 
+export interface TimestampedMetricEntry {
+    timestamp: string;
+    value: number;
+}
+
+export interface HealthRawSeries {
+    heart_rates: TimestampedMetricEntry[];
+    steps: TimestampedMetricEntry[];
+    sleep_hours: TimestampedMetricEntry[];
+    active_energy: TimestampedMetricEntry[];
+    hrv: TimestampedMetricEntry[];
+}
+
 export interface HealthExportUploadResponse {
     parsed_metrics: ParsedHealthMetrics;
     physical_state: PhysicalStateResult;
     downstream_calls: AgentTriggerResult[];
+    raw_series?: HealthRawSeries;
 }
 
-export async function uploadHealthExportZip(fileUri: string, fileName: string): Promise<HealthExportUploadResponse> {
+export async function uploadHealthExportZip(
+    fileUri: string,
+    fileName: string,
+    fileType: string = 'application/zip'
+): Promise<HealthExportUploadResponse> {
     const createFormData = () => {
         const formData = new FormData();
 
@@ -43,16 +61,14 @@ export async function uploadHealthExportZip(fileUri: string, fileName: string): 
         formData.append('file', {
             uri: fileUri,
             name: fileName,
-            type: 'application/zip',
+            type: fileType,
         } as any);
         return formData;
     };
 
     try {
         const { data } = await api.post<HealthExportUploadResponse>('/upload-health-export', createFormData(), {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
+            headers: { 'Content-Type': 'multipart/form-data' },
             timeout: 120_000,
         });
         return data;
@@ -63,9 +79,7 @@ export async function uploadHealthExportZip(fileUri: string, fileName: string): 
 
         // Compatibility fallback for deployments that expose /api-prefixed paths.
         const { data } = await api.post<HealthExportUploadResponse>('/api/upload-health-export', createFormData(), {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
+            headers: { 'Content-Type': 'multipart/form-data' },
             timeout: 120_000,
         });
         return data;

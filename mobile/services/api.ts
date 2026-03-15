@@ -50,6 +50,13 @@ const api = axios.create({
 
 // ── Auth interceptor — attach Bearer token to every request ──
 api.interceptors.request.use((config) => {
+  const isFormDataPayload =
+    typeof FormData !== "undefined" && config.data instanceof FormData;
+
+  if (isFormDataPayload && config.headers) {
+    delete config.headers["Content-Type"];
+  }
+
   // Lazy import to avoid circular dependency at module load time
   const { useAuthStore } = require("@/stores/authStore");
   const token = useAuthStore.getState().accessToken;

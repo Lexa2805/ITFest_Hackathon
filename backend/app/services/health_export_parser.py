@@ -21,6 +21,7 @@ ACTIVE_ENERGY_TYPE = "HKQuantityTypeIdentifierActiveEnergyBurned"
 HRV_TYPE = "HKQuantityTypeIdentifierHeartRateVariabilitySDNN"
 
 XML_DATE_FORMAT = "%Y-%m-%d %H:%M:%S %z"
+LAST_N_DAYS = 7
 
 
 def _parse_xml_datetime(raw_value: str | None) -> dt.datetime | None:
@@ -41,6 +42,12 @@ def _to_float(raw_value: str | None) -> float | None:
         return None
 
 
+def _is_on_or_after_cutoff(timestamp: dt.datetime | None, cutoff: dt.datetime) -> bool:
+    if not timestamp:
+        return False
+    return timestamp >= cutoff
+
+
 def _build_summary(values: list[float], unit: str, *, total_override: float | None = None) -> HealthMetricSummary:
     if not values:
         return HealthMetricSummary(sample_count=0, total=0.0, average=0.0, unit=unit)
@@ -55,7 +62,9 @@ def _build_summary(values: list[float], unit: str, *, total_override: float | No
     )
 
 
-def parse_health_export_zip(zip_bytes: bytes) -> tuple[ParsedHealthMetrics, dict[str, list[float]]]:
+def parse_health_export_zip(
+    zip_bytes: bytes,
+) -> tuple[ParsedHealthMetrics, dict[str, list[float]], dict[str, list[dict[str, float | str]]]]:
     """
     Parse an Apple Health export ZIP and return normalized summaries.
     
@@ -105,32 +114,54 @@ def parse_health_export_zip(zip_bytes: bytes) -> tuple[ParsedHealthMetrics, dict
     sleep_hours_per_day: dict[str, float] = defaultdict(float)
 
     # Iterate all Record nodes once for efficiency.
+    now_utc = dt.datetime.now(dt.timezone.utc)
+    cutoff_utc = now_utc - dt.timedelta(days=LAST_N_DAYS)
+
+    heart_rate_points: list[dict[str, float | str]] = []
+    hrv_points: list[dict[str, float | str]] = []
+
     for record in root.iter("Record"):
         record_type = record.attrib.get("type")
         value = _to_float(record.attrib.get("value"))
+        start_date = _parse_xml_datetime(record.attrib.get("startDate"))
+        end_date = _parse_xml_datetime(record.attrib.get("endDate"))
 
         if record_type == HEART_RATE_TYPE and value is not None:
+            if not _is_on_or_after_cutoff(start_date, cutoff_utc):
+                continue
             heart_rates.append(value)
+            heart_rate_points.append(
+                {
+                    "timestamp": start_date.isoformat(),
+                    "value": value,
+                }
+            )
             continue
 
         if record_type == STEP_COUNT_TYPE and value is not None:
             # Aggregate steps by day
-            start_date = _parse_xml_datetime(record.attrib.get("startDate"))
-            if start_date:
+            if _is_on_or_after_cutoff(start_date, cutoff_utc):
                 day_key = start_date.date().isoformat()
                 steps_per_day[day_key] += value
             continue
 
         if record_type == ACTIVE_ENERGY_TYPE and value is not None:
             # Aggregate calories by day
-            start_date = _parse_xml_datetime(record.attrib.get("startDate"))
-            if start_date:
+            if _is_on_or_after_cutoff(start_date, cutoff_utc):
                 day_key = start_date.date().isoformat()
                 calories_per_day[day_key] += value
             continue
 
         if record_type == HRV_TYPE and value is not None:
+            if not _is_on_or_after_cutoff(start_date, cutoff_utc):
+                continue
             hrv_values.append(value)
+            hrv_points.append(
+                {
+                    "timestamp": start_date.isoformat(),
+                    "value": value,
+                }
+            )
             continue
 
         if record_type == SLEEP_ANALYSIS_TYPE:
@@ -139,9 +170,9 @@ def parse_health_export_zip(zip_bytes: bytes) -> tuple[ParsedHealthMetrics, dict
             if "Asleep" not in sleep_value:
                 continue
 
-            start_date = _parse_xml_datetime(record.attrib.get("startDate"))
-            end_date = _parse_xml_datetime(record.attrib.get("endDate"))
             if not start_date or not end_date or end_date <= start_date:
+                continue
+            if not _is_on_or_after_cutoff(end_date, cutoff_utc):
                 continue
 
             duration_hours = (end_date - start_date).total_seconds() / 3600.0
@@ -165,10 +196,33 @@ def parse_health_export_zip(zip_bytes: bytes) -> tuple[ParsedHealthMetrics, dict
         hrv_sdnn=_build_summary(hrv_values, "ms", total_override=float(sum(hrv_values)) if hrv_values else 0.0),
     )
 
-    return parsed, {
+    sorted_step_days = sorted(steps_per_day.items())
+    sorted_calorie_days = sorted(calories_per_day.items())
+    sorted_sleep_days = sorted(sleep_hours_per_day.items())
+
+    raw_series_values = {
         "heart_rates": heart_rates,
-        "steps": daily_steps,  # Now daily totals instead of individual records
+        "steps": daily_steps,
         "sleep_hours": sleep_nightly_hours,
-        "active_energy": daily_calories,  # Now daily totals instead of individual records
+        "active_energy": daily_calories,
         "hrv": hrv_values,
     }
+
+    raw_series_with_timestamps = {
+        "heart_rates": heart_rate_points,
+        "steps": [
+            {"timestamp": f"{day_key}T00:00:00+00:00", "value": total_steps_for_day}
+            for day_key, total_steps_for_day in sorted_step_days
+        ],
+        "sleep_hours": [
+            {"timestamp": f"{day_key}T00:00:00+00:00", "value": total_sleep_for_day}
+            for day_key, total_sleep_for_day in sorted_sleep_days
+        ],
+        "active_energy": [
+            {"timestamp": f"{day_key}T00:00:00+00:00", "value": total_calories_for_day}
+            for day_key, total_calories_for_day in sorted_calorie_days
+        ],
+        "hrv": hrv_points,
+    }
+
+    return parsed, raw_series_values, raw_series_with_timestamps

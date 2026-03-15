@@ -28,6 +28,8 @@ export interface ProfilePayload {
     gender?: Gender | null;
     activity_level?: ActivityLevel | null;
     goal?: HealthGoal | null;
+    experience_level?: "beginner" | "intermediate" | "advanced" | null;
+    available_days_per_week?: number | null;
     has_apple_watch: boolean;
     weekly_budget?: number | null;
 }
@@ -42,6 +44,8 @@ export interface ProfileResponse {
     gender?: Gender | null;
     activity_level?: ActivityLevel | null;
     goal?: HealthGoal | null;
+    experience_level?: "beginner" | "intermediate" | "advanced" | null;
+    available_days_per_week?: number | null;
     has_apple_watch: boolean;
     weekly_budget?: number | null;
     created_at?: string;

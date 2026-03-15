@@ -3,7 +3,7 @@
  * bento-style metric cards, and animated entry transitions.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,13 +12,76 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { HealthMetricCard } from '@/components/health/HealthMetricCard';
 import { HealthExportUploadResponse, uploadHealthExportZip } from '@/services/healthExportApi';
-import { useHealthStore } from '@/stores/healthStore';
+import { normalizeHealthDataToLast7Days, useHealthStore } from '@/stores/healthStore';
 import { theme } from '@/constants/theme';
 import { NeonButton } from '@/components/ui/NeonButton';
 import { BentoCard } from '@/components/ui/BentoCard';
 
 function formatMetric(value: number, unit: string): string {
     return `${value.toFixed(2)} ${unit}`;
+}
+
+function sumValues(values: Array<{ value: number }>): number {
+    return values.reduce((total, item) => total + item.value, 0);
+}
+
+function averageValues(values: Array<{ value: number }>): number {
+    if (values.length === 0) return 0;
+    return sumValues(values) / values.length;
+}
+
+function toDisplayText(value: unknown, fallback: string): string {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : fallback;
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+
+    if (Array.isArray(value)) {
+        const joined = value
+            .map((entry) => toDisplayText(entry, ''))
+            .filter((entry) => entry.length > 0)
+            .join(' | ');
+        return joined.length > 0 ? joined : fallback;
+    }
+
+    if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+
+        if (typeof record.msg === 'string' && record.msg.trim().length > 0) {
+            return record.msg;
+        }
+
+        try {
+            const serialized = JSON.stringify(value);
+            return serialized && serialized.length > 0 ? serialized : fallback;
+        } catch {
+            return fallback;
+        }
+    }
+
+    return fallback;
+}
+
+function extractErrorMessage(error: any, fallback: string): string {
+    const apiDetail = error?.response?.data?.detail;
+    if (apiDetail !== undefined) {
+        return toDisplayText(apiDetail, fallback);
+    }
+
+    const apiData = error?.response?.data;
+    if (apiData !== undefined) {
+        return toDisplayText(apiData, fallback);
+    }
+
+    if (error?.message !== undefined) {
+        return toDisplayText(error.message, fallback);
+    }
+
+    return toDisplayText(error, fallback);
 }
 
 type WorkoutRecommendation = {
@@ -29,18 +92,25 @@ type WorkoutRecommendation = {
 export default function HealthUploadScreen() {
     const [processing, setProcessing] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [result, setResult] = useState<HealthExportUploadResponse | null>(null);
+    const storedHealthData = useHealthStore((state) => state.healthData);
+    const [result, setResult] = useState<HealthExportUploadResponse | null>(storedHealthData);
     const setHealthData = useHealthStore((state) => state.setHealthData);
+
+    useEffect(() => {
+        if (storedHealthData) {
+            setResult(storedHealthData);
+        }
+    }, [storedHealthData]);
 
     const metricCards = useMemo(() => {
         if (!result) return [];
         const m = result.parsed_metrics;
         return [
-            { key: 'heart-rate', title: 'Heart Rate', totalLabel: 'Total', totalValue: formatMetric(m.heart_rate.total, m.heart_rate.unit), averageLabel: 'Average', averageValue: formatMetric(m.heart_rate.average, m.heart_rate.unit), samples: m.heart_rate.sample_count },
-            { key: 'steps', title: 'Step Count', totalLabel: 'Total Steps', totalValue: formatMetric(m.step_count.total, m.step_count.unit), averageLabel: 'Average', averageValue: formatMetric(m.step_count.average, m.step_count.unit), samples: m.step_count.sample_count },
-            { key: 'sleep', title: 'Sleep Analysis', totalLabel: 'Total Sleep', totalValue: formatMetric(m.sleep_analysis.total, m.sleep_analysis.unit), averageLabel: 'Average / night', averageValue: formatMetric(m.sleep_analysis.average, m.sleep_analysis.unit), samples: m.sleep_analysis.sample_count },
-            { key: 'calories', title: 'Calories Burned', totalLabel: 'Total', totalValue: formatMetric(m.active_energy_burned.total, m.active_energy_burned.unit), averageLabel: 'Average', averageValue: formatMetric(m.active_energy_burned.average, m.active_energy_burned.unit), samples: m.active_energy_burned.sample_count },
-            { key: 'hrv', title: 'HRV (SDNN)', totalLabel: 'Total', totalValue: formatMetric(m.hrv_sdnn.total, m.hrv_sdnn.unit), averageLabel: 'Average', averageValue: formatMetric(m.hrv_sdnn.average, m.hrv_sdnn.unit), samples: m.hrv_sdnn.sample_count },
+            { key: 'heart-rate', title: 'Heart Rate', totalLabel: 'Last 7 Days', totalValue: formatMetric(m.heart_rate.total, m.heart_rate.unit), averageLabel: 'Average', averageValue: formatMetric(m.heart_rate.average, m.heart_rate.unit), samples: m.heart_rate.sample_count },
+            { key: 'steps', title: 'Step Count', totalLabel: 'Steps (Last 7 Days)', totalValue: formatMetric(m.step_count.total, m.step_count.unit), averageLabel: 'Average', averageValue: formatMetric(m.step_count.average, m.step_count.unit), samples: m.step_count.sample_count },
+            { key: 'sleep', title: 'Sleep Analysis', totalLabel: 'Sleep (Last 7 Days)', totalValue: formatMetric(m.sleep_analysis.total, m.sleep_analysis.unit), averageLabel: 'Average / night', averageValue: formatMetric(m.sleep_analysis.average, m.sleep_analysis.unit), samples: m.sleep_analysis.sample_count },
+            { key: 'calories', title: 'Calories Burned', totalLabel: 'Last 7 Days', totalValue: formatMetric(m.active_energy_burned.total, m.active_energy_burned.unit), averageLabel: 'Average', averageValue: formatMetric(m.active_energy_burned.average, m.active_energy_burned.unit), samples: m.active_energy_burned.sample_count },
+            { key: 'hrv', title: 'HRV (SDNN)', totalLabel: 'Last 7 Days', totalValue: formatMetric(m.hrv_sdnn.total, m.hrv_sdnn.unit), averageLabel: 'Average', averageValue: formatMetric(m.hrv_sdnn.average, m.hrv_sdnn.unit), samples: m.hrv_sdnn.sample_count },
         ];
     }, [result]);
 
@@ -83,23 +153,62 @@ export default function HealthUploadScreen() {
         ];
     }, [result]);
 
+    const weeklySummary = useMemo(() => {
+        if (!result) return null;
+
+        const weeklySteps = result.raw_series?.steps ?? [];
+        const weeklyCalories = result.raw_series?.active_energy ?? [];
+        const weeklySleep = result.raw_series?.sleep_hours ?? [];
+
+        if (weeklySteps.length === 0 && weeklyCalories.length === 0 && weeklySleep.length === 0) {
+            return null;
+        }
+
+        const totalWeeklySteps = sumValues(weeklySteps);
+        const avgDailyCalories = averageValues(weeklyCalories);
+        const avgSleepHours = averageValues(weeklySleep);
+        const trackedDays = Math.max(weeklySteps.length, weeklyCalories.length, weeklySleep.length);
+
+        return {
+            totalWeeklySteps,
+            avgDailyCalories,
+            avgSleepHours,
+            trackedDays,
+        };
+    }, [result]);
+
     async function handlePickAndUpload() {
         setErrorMessage(null);
-        const picked = await DocumentPicker.getDocumentAsync({ type: 'application/zip', multiple: false, copyToCacheDirectory: true });
+        const picked = await DocumentPicker.getDocumentAsync({
+            type: ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'],
+            multiple: false,
+            copyToCacheDirectory: true,
+        });
         if (picked.canceled) return;
         const selectedFile = picked.assets[0];
-        if (!selectedFile?.uri || !selectedFile?.name) {
+        if (!selectedFile?.uri) {
             setErrorMessage('Could not read the selected file. Please try another ZIP export.');
             return;
         }
+
+        const resolvedName = selectedFile.name?.toLowerCase().endsWith('.zip')
+            ? selectedFile.name
+            : `${selectedFile.name ?? 'health-export'}.zip`;
+        const resolvedType = selectedFile.mimeType || 'application/zip';
+
         try {
             setProcessing(true);
-            const uploadResponse = await uploadHealthExportZip(selectedFile.uri, selectedFile.name);
-            setResult(uploadResponse);
-            setHealthData(uploadResponse);
+            const uploadResponse = await uploadHealthExportZip(selectedFile.uri, resolvedName, resolvedType);
+            const filteredResponse = normalizeHealthDataToLast7Days(uploadResponse) ?? uploadResponse;
+            setResult(filteredResponse);
+            setHealthData(filteredResponse);
         } catch (error: any) {
-            const serverMessage = error?.response?.data?.detail;
-            setErrorMessage(serverMessage || 'Upload failed. Please verify this is a valid Apple Health export ZIP.');
+            const statusCode = error?.response?.status;
+            if (statusCode === 400 || statusCode === 422) {
+                setErrorMessage(extractErrorMessage(error, 'Upload failed. Please confirm this ZIP contains export.xml from Apple Health.'));
+            } else {
+                setErrorMessage(extractErrorMessage(error, 'Upload failed. Please verify this is a valid Apple Health export ZIP.'));
+            }
         } finally {
             setProcessing(false);
         }
@@ -118,6 +227,39 @@ export default function HealthUploadScreen() {
                     <NeonButton label="Upload Apple Health Export" onPress={handlePickAndUpload} disabled={processing} loading={processing} />
                 </Animated.View>
 
+                {weeklySummary ? (
+                    <Animated.View entering={FadeInDown.duration(500).delay(150)}>
+                        <BentoCard highlighted span={2} style={styles.weeklySummaryCard}>
+                            <Text style={styles.weeklySummaryEyebrow}>Last 7 days</Text>
+                            <Text style={styles.weeklySummaryTitle}>Weekly sync summary</Text>
+                            <View style={styles.weeklySummaryGrid}>
+                                <View style={styles.weeklySummaryItem}>
+                                    <Text style={styles.weeklySummaryLabel}>Total Steps</Text>
+                                    <Text style={styles.weeklySummaryValue}>{Math.round(weeklySummary.totalWeeklySteps).toLocaleString()}</Text>
+                                </View>
+                                <View style={styles.weeklySummaryItem}>
+                                    <Text style={styles.weeklySummaryLabel}>Avg Calories / day</Text>
+                                    <Text style={styles.weeklySummaryValue}>{Math.round(weeklySummary.avgDailyCalories).toLocaleString()} kcal</Text>
+                                </View>
+                                <View style={styles.weeklySummaryItem}>
+                                    <Text style={styles.weeklySummaryLabel}>Avg Sleep / night</Text>
+                                    <Text style={styles.weeklySummaryValue}>{weeklySummary.avgSleepHours.toFixed(1)} h</Text>
+                                </View>
+                                <View style={styles.weeklySummaryItem}>
+                                    <Text style={styles.weeklySummaryLabel}>Tracked Days</Text>
+                                    <Text style={styles.weeklySummaryValue}>{weeklySummary.trackedDays}/7</Text>
+                                </View>
+                            </View>
+                        </BentoCard>
+                    </Animated.View>
+                ) : null}
+
+                {result && !weeklySummary ? (
+                    <View style={styles.infoCard}>
+                        <Text style={styles.infoText}>Weekly summary is available after uploading a recent export with timestamped entries.</Text>
+                    </View>
+                ) : null}
+
                 {processing ? (
                     <View style={styles.loadingCard}>
                         <ActivityIndicator color={theme.colors.green.primary} size="small" />
@@ -127,7 +269,7 @@ export default function HealthUploadScreen() {
 
                 {errorMessage ? (
                     <View style={styles.errorCard}>
-                        <Text style={styles.errorText}>{errorMessage}</Text>
+                        <Text style={styles.errorText}>{toDisplayText(errorMessage, 'Upload failed.')}</Text>
                     </View>
                 ) : null}
 
@@ -252,6 +394,19 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         lineHeight: 18,
     },
+    infoCard: {
+        backgroundColor: 'rgba(57,255,136,0.08)',
+        borderRadius: theme.radius.lg,
+        borderWidth: 1,
+        borderColor: 'rgba(57,255,136,0.25)',
+        padding: 12,
+    },
+    infoText: {
+        color: theme.colors.text.secondary,
+        fontSize: 12,
+        lineHeight: 18,
+        fontWeight: '600',
+    },
     heroWrap: {
         borderRadius: theme.radius.lg,
         overflow: 'hidden',
@@ -338,5 +493,46 @@ const styles = StyleSheet.create({
     },
     cardsColumn: {
         gap: 10,
+    },
+    weeklySummaryCard: {
+        width: '100%',
+        minHeight: 0,
+        gap: 12,
+    },
+    weeklySummaryEyebrow: {
+        color: theme.colors.green.accent,
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+    },
+    weeklySummaryTitle: {
+        color: theme.colors.text.primary,
+        fontSize: 20,
+        fontWeight: '800',
+    },
+    weeklySummaryGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+    },
+    weeklySummaryItem: {
+        backgroundColor: theme.colors.background.main,
+        borderRadius: theme.radius.md,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        width: '48%',
+        gap: 4,
+    },
+    weeklySummaryLabel: {
+        color: theme.colors.text.muted,
+        fontSize: 11,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+    },
+    weeklySummaryValue: {
+        color: theme.colors.green.primary,
+        fontSize: 16,
+        fontWeight: '800',
     },
 });

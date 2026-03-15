@@ -21,6 +21,7 @@ HealthGoal = Literal[
     "improve endurance",
 ]
 Gender = Literal["male", "female", "non-binary", "prefer not to say", "other"]
+ExperienceLevel = Literal["beginner", "intermediate", "advanced"]
 
 
 class ProfileUpsertRequest(BaseModel):
@@ -34,6 +35,8 @@ class ProfileUpsertRequest(BaseModel):
     gender: Gender | None = None
     activity_level: ActivityLevel | None = None
     goal: HealthGoal | None = None
+    experience_level: ExperienceLevel | None = None
+    available_days_per_week: int | None = Field(default=None, ge=1, le=7)
     has_apple_watch: bool = True
     weekly_budget: float | None = Field(default=None, ge=0)
 
@@ -50,6 +53,8 @@ class ProfileResponse(BaseModel):
     gender: str | None = None
     activity_level: str | None = None
     goal: str | None = None
+    experience_level: str | None = None
+    available_days_per_week: int | None = None
     has_apple_watch: bool = True
     weekly_budget: float | None = None
     created_at: datetime | None = None

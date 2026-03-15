@@ -25,21 +25,30 @@ router = APIRouter(tags=["health-export"])
     include_in_schema=False,
 )
 async def upload_health_export(
-    file: UploadFile = File(..., description="Apple Health export ZIP file"),
+    file: UploadFile | None = File(default=None, description="Apple Health export ZIP file"),
+    zip_file: UploadFile | None = File(default=None, alias="zipFile"),
+    export_file: UploadFile | None = File(default=None, alias="exportFile"),
     user_id: str = Depends(get_current_user_id),
 ) -> HealthExportUploadResponse:
     """
     Accept `export.zip`, parse `export.xml`, compute biometric summaries,
     generate a physical-state score, save to database, and trigger downstream agents.
     """
-    filename = (file.filename or "").lower()
+    upload_file = file or zip_file or export_file
+    if upload_file is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file uploaded. Send multipart/form-data with one of: file, zipFile, exportFile.",
+        )
+
+    filename = (upload_file.filename or "").lower()
     if not filename.endswith(".zip"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Please upload a .zip file exported from Apple Health.",
         )
 
-    zip_bytes = await file.read()
+    zip_bytes = await upload_file.read()
     if not zip_bytes:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -53,7 +62,7 @@ async def upload_health_export(
             detail=f"File too large. Maximum allowed size is {max_size_mb}MB.",
         )
 
-    parsed_metrics, raw_series = parse_health_export_zip(zip_bytes)
+    parsed_metrics, raw_series, timestamped_series = parse_health_export_zip(zip_bytes)
 
     physical_state = calculate_physical_state(
         heart_rates=raw_series["heart_rates"],
@@ -74,6 +83,7 @@ async def upload_health_export(
         parsed_metrics=parsed_metrics,
         physical_state=physical_state,
         downstream_calls=downstream_results,
+        raw_series=timestamped_series,
     )
 
 

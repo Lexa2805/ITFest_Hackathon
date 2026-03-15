@@ -36,6 +36,7 @@ import { NeonButton } from '@/components/ui/NeonButton';
 const activityOptions: ActivityLevel[] = ['sedentary', 'lightly active', 'moderately active', 'very active'];
 const goalOptions: HealthGoal[] = ['lose weight', 'maintain', 'build muscle', 'improve endurance'];
 const genderOptions: Gender[] = ['male', 'female', 'non-binary', 'prefer not to say', 'other'];
+const experienceOptions: Array<'beginner' | 'intermediate' | 'advanced'> = ['beginner', 'intermediate', 'advanced'];
 
 function toLbs(kg: number): number { return kg * 2.20462; }
 function toKg(lbs: number): number { return lbs / 2.20462; }
@@ -99,6 +100,8 @@ export default function ProfileScreen() {
     const [gender, setGender] = useState<Gender | null>(null);
     const [activityLevel, setActivityLevel] = useState<ActivityLevel | null>(null);
     const [goal, setGoal] = useState<HealthGoal | null>(null);
+    const [experienceLevel, setExperienceLevel] = useState<'beginner' | 'intermediate' | 'advanced' | null>(null);
+    const [availableDaysPerWeek, setAvailableDaysPerWeek] = useState('');
     const [hasAppleWatch, setHasAppleWatch] = useState(true);
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
     const [weeklyBudget, setWeeklyBudget] = useState('');
@@ -122,6 +125,8 @@ export default function ProfileScreen() {
         setGender((profile.gender as Gender | null) ?? null);
         setActivityLevel((profile.activity_level as ActivityLevel | null) ?? null);
         setGoal((profile.goal as HealthGoal | null) ?? null);
+        setExperienceLevel((profile.experience_level as 'beginner' | 'intermediate' | 'advanced' | null) ?? null);
+        setAvailableDaysPerWeek(typeof profile.available_days_per_week === 'number' ? String(profile.available_days_per_week) : '');
         setHasAppleWatch(profile.has_apple_watch);
         setWeeklyBudget(typeof profile.weekly_budget === 'number' ? String(profile.weekly_budget) : '');
         if (typeof profile.weight === 'number') {
@@ -161,6 +166,7 @@ export default function ProfileScreen() {
     const saveProfileHandler = async () => {
         const parsedWeight = parseFloat(weight);
         const parsedAge = parseInt(age, 10);
+        const parsedAvailableDays = parseInt(availableDaysPerWeek, 10);
         const weightKg = Number.isFinite(parsedWeight) ? (weightUnit === 'kg' ? parsedWeight : toKg(parsedWeight)) : null;
         let heightValueCm: number | null = null;
         if (heightUnit === 'cm') {
@@ -176,6 +182,10 @@ export default function ProfileScreen() {
                 name: name.trim() || null, email: email.trim() || user?.email || null,
                 weight: weightKg, height: heightValueCm, age: Number.isFinite(parsedAge) ? parsedAge : null,
                 gender, activity_level: activityLevel, goal, has_apple_watch: hasAppleWatch,
+                experience_level: experienceLevel,
+                available_days_per_week: Number.isFinite(parsedAvailableDays)
+                    ? Math.min(7, Math.max(1, parsedAvailableDays))
+                    : null,
                 weekly_budget: weeklyBudget.trim() ? parseFloat(weeklyBudget) || null : null,
             });
             Alert.alert('Saved', 'Your profile has been updated.');
@@ -336,6 +346,28 @@ export default function ProfileScreen() {
                         <Text style={styles.label}>Health goal</Text>
                         <View style={styles.chipWrap}>{goalOptions.map((item) => <Chip key={item} label={item} selected={goal === item} onPress={() => setGoal(item)} />)}</View>
                     </View>
+
+                    <View style={styles.field}>
+                        <Text style={styles.label}>Workout experience</Text>
+                        <View style={styles.chipWrap}>
+                            {experienceOptions.map((item) => (
+                                <Chip
+                                    key={item}
+                                    label={item}
+                                    selected={experienceLevel === item}
+                                    onPress={() => setExperienceLevel(item)}
+                                />
+                            ))}
+                        </View>
+                    </View>
+
+                    <Field
+                        label="Available workout days (1-7)"
+                        value={availableDaysPerWeek}
+                        onChangeText={setAvailableDaysPerWeek}
+                        placeholder="e.g. 4"
+                        keyboardType="numeric"
+                    />
 
                     <Field label="Weekly food budget ($)" value={weeklyBudget} onChangeText={setWeeklyBudget} placeholder="e.g. 100" keyboardType="numeric" />
 

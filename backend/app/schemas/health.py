@@ -51,9 +51,23 @@ class AgentTriggerResult(BaseModel):
     detail: str | None = None
 
 
+class TimestampedMetricPoint(BaseModel):
+    timestamp: str
+    value: float
+
+
+class HealthRawSeries(BaseModel):
+    heart_rates: list[TimestampedMetricPoint] = []
+    steps: list[TimestampedMetricPoint] = []
+    sleep_hours: list[TimestampedMetricPoint] = []
+    active_energy: list[TimestampedMetricPoint] = []
+    hrv: list[TimestampedMetricPoint] = []
+
+
 class HealthExportUploadResponse(BaseModel):
     """Final API response for POST /upload-health-export."""
 
     parsed_metrics: ParsedHealthMetrics
     physical_state: PhysicalStateResult
     downstream_calls: list[AgentTriggerResult]
+    raw_series: HealthRawSeries | None = None

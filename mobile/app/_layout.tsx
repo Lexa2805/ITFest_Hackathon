@@ -9,6 +9,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useAuthStore } from "@/stores/authStore";
 import { ProfileProvider } from "@/contexts/ProfileContext";
+import { WorkoutProvider } from "@/contexts/WorkoutContext";
 import { theme } from "@/constants/theme";
 
 export {
@@ -87,17 +88,19 @@ function RootLayoutNav() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ProfileProvider>
-          <ThemeProvider value={AppTheme}>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-              <Stack.Screen name="recipe-suggestions" options={{ headerShown: false }} />
-              <Stack.Screen name="recipe-detail/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="shopping-list" options={{ headerShown: false }} />
-              <Stack.Screen name="weekly-plan" options={{ headerShown: false }} />
-            </Stack>
-          </ThemeProvider>
+          <WorkoutProvider>
+            <ThemeProvider value={AppTheme}>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+                <Stack.Screen name="recipe-suggestions" options={{ headerShown: false }} />
+                <Stack.Screen name="recipe-detail/[id]" options={{ headerShown: false }} />
+                <Stack.Screen name="shopping-list" options={{ headerShown: false }} />
+                <Stack.Screen name="weekly-plan" options={{ headerShown: false }} />
+              </Stack>
+            </ThemeProvider>
+          </WorkoutProvider>
         </ProfileProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

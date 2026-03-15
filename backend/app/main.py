@@ -19,6 +19,7 @@ from app.api.profile import router as profile_router
 from app.api.recipes import router as recipes_router
 from app.api.streaks import router as streaks_router
 from app.api.trends import router as trends_router
+from app.api.workout import router as workout_router
 
 app = FastAPI(
     title="Personal Health OS",
@@ -54,6 +55,7 @@ app.include_router(profile_router)
 app.include_router(recipes_router, prefix="/recipes", tags=["recipes"])
 app.include_router(streaks_router)
 app.include_router(trends_router)
+app.include_router(workout_router)
 
 
 # ---------------------------------------------------------------------------

@@ -131,6 +131,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
                 gender: profile?.gender,
                 activity_level: profile?.activity_level,
                 goal: profile?.goal,
+                experience_level: profile?.experience_level,
+                available_days_per_week: profile?.available_days_per_week,
                 has_apple_watch: enabled,
                 weekly_budget: profile?.weekly_budget,
             });
